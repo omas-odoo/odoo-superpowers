@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Stop hook stub for Phase 2: when Claude flags uncertainty during the session,
+# this script will package the question + code context and post to Discord
+# for asynchronous teaching. Today it's a no-op.
+#
+# The companion project that owns the Discord side lives at:
+#   ~/work/odoo-superpowers-bot/
+#
+# Phase 1 (already scaffolded there): daily PR review → Discord. One-way.
+# Phase 2 (this hook will participate): in-session uncertainty → Discord, then
+#   reactions/replies flow back into skills/_journal.md via the bot's listener.
+# Phase 3: nightly journal-processing job opens PRs against this plugin.
+#
+# When you turn this on:
+#   1. Set DISCORD_WEBHOOK_URL in your environment (or settings.json).
+#   2. Have skills append uncertainty entries to skills/_journal.md with a
+#      special marker (e.g. "## UNCERTAIN [YYYY-MM-DD HH:MM]").
+#   3. This script tails the journal for unsent entries, posts them, and
+#      marks them as sent.
+
+set -euo pipefail
+
+# Phase 2 — currently disabled. Exit silently.
+exit 0

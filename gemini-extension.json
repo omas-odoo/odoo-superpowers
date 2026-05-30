@@ -1,0 +1,6 @@
+{
+  "name": "odoo-superpowers",
+  "description": "Odoo SA development skills, hooks, and conventions for PSDU customer work.",
+  "version": "0.1.0",
+  "contextFileName": "GEMINI.md"
+}

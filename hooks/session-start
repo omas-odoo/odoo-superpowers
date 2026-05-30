@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# SessionStart hook for odoo-superpowers.
+#
+# Loads two things into context at session start:
+#   1. The using-odoo-superpowers entry skill (so Claude knows the skill catalog).
+#   2. Recent UNPROCESSED corrections from skills/_journal.md — the feedback that
+#      hasn't been folded into a skill yet. This bridges the lag between "you
+#      corrected the bot on Discord" and "the refiner rewrote the skill", so a
+#      session benefits from the freshest teaching immediately.
+#
+# Processed ([done]) entries are intentionally skipped — they're already in the
+# skills, so re-loading them would just burn context.
+#
+# Tunables (env vars):
+#   ODOO_SP_MEMORY=off            disable memory loading (entry skill still loads)
+#   ODOO_SP_MEMORY_MAX_ENTRIES    most-recent N unprocessed entries (default 5)
+#   ODOO_SP_MEMORY_MAX_CHARS      hard cap on injected memory size (default 4000)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+# --- 1. Entry skill ---
+using_content=$(cat "${PLUGIN_ROOT}/skills/using-odoo-superpowers/SKILL.md" 2>&1 \
+    || echo "Error reading using-odoo-superpowers skill")
+
+# --- 2. Recent unprocessed journal corrections ---
+memory_block=""
+if [ "${ODOO_SP_MEMORY:-on}" != "off" ]; then
+    journal="${PLUGIN_ROOT}/skills/_journal.md"
+    max_entries="${ODOO_SP_MEMORY_MAX_ENTRIES:-5}"
+    max_chars="${ODOO_SP_MEMORY_MAX_CHARS:-4000}"
+
+    if [ -f "$journal" ]; then
+        # Split into entries on "## " headers; keep only those whose Status is
+        # still "unprocessed"; emit the most recent `max_entries`.
+        # Only real ISO-dated headers count as entries — this skips the
+        # "## YYYY-MM-DD — short title" format example in the journal header.
+        # Nothing accumulates until the first real entry (`started` guard).
+        recent=$(awk -v max="$max_entries" '
+            /^## [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/ {
+                if (started && unproc) entries[++n] = block
+                block = $0 "\n"; unproc = 0; started = 1; next
+            }
+            started { block = block $0 "\n"
+              if (tolower($0) ~ /status:\*\*[ \t]*unprocessed/) unproc = 1 }
+            END {
+                if (started && unproc) entries[++n] = block
+                start = n - max + 1; if (start < 1) start = 1
+                for (i = start; i <= n; i++) printf "%s\n", entries[i]
+            }
+        ' "$journal" | head -c "$max_chars")
+
+        if [ -n "$(printf '%s' "$recent" | tr -d '[:space:]')" ]; then
+            memory_block=$(printf '\n\n## Recent corrections not yet folded into skills\n\nThese came from team feedback and have NOT yet been processed into the skill files. Treat them as authoritative for this session:\n\n%s' "$recent")
+        fi
+    fi
+fi
+
+# --- Assemble + escape ---
+combined="${using_content}${memory_block}"
+combined_escaped=$(escape_for_json "$combined")
+
+session_context="<EXTREMELY_IMPORTANT>\nYou have odoo-superpowers — Odoo PSDU skills installed.\n\n**Below is the full content of your 'odoo-superpowers:using-odoo-superpowers' entry skill, followed by any recent un-folded corrections. For all other Odoo skills (odoo-code-review, odoo-module-development, odoo-python, odoo-xml-conventions, odoo-migrations, odoo-test-runner, odoo-task-completion, refining-odoo-skills), invoke them via the Skill tool when relevant:**\n\n${combined_escaped}\n</EXTREMELY_IMPORTANT>"
+
+# Platform-aware JSON output.
+# Cursor   → additional_context (snake_case, top-level)
+# Claude Code → hookSpecificOutput.additionalContext (nested)
+# Copilot CLI / SDK standard → additionalContext (top-level)
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+    printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+else
+    printf '{\n  "additionalContext": "%s"\n}\n' "$session_context"
+fi
+
+exit 0

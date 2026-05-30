@@ -1,0 +1,24 @@
+{
+	"name": "odoo-superpowers",
+	"version": "0.1.0",
+	"description": "Odoo SA development skills, hooks, and conventions for PSDU customer work.",
+	"author": {
+		"name": "Omar Assouma",
+		"email": "omas@odoo.com"
+	},
+	"license": "MIT",
+	"keywords": ["odoo", "psdu", "skills", "code-review", "testing"],
+	"skills": "./skills/",
+	"interface": {
+		"displayName": "Odoo Superpowers",
+		"shortDescription": "Odoo module development, review, and testing workflows for PSDU",
+		"longDescription": "Principles-first guidance for shipping Odoo modules to customers: module design, code review, test runs against throwaway DBs, and a learning loop that turns every correction into a sharper skill.",
+		"developerName": "Omar Assouma",
+		"category": "Coding",
+		"capabilities": ["Interactive", "Read", "Write"],
+		"defaultPrompt": [
+			"Let's start a new Odoo module for this task.",
+			"Review this Odoo code before I commit."
+		]
+	}
+}

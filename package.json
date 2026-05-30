@@ -1,0 +1,6 @@
+{
+  "name": "odoo-superpowers",
+  "version": "0.1.0",
+  "description": "Odoo SA development skills, hooks, and conventions for PSDU customer work.",
+  "type": "module"
+}
