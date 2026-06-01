@@ -7,6 +7,25 @@ description: Use when reviewing Odoo code — yours before commit, Claude's afte
 
 Review Odoo code the way an experienced PSDU dev would — for *shape*, not for lint. Lint catches typos; review catches assumptions.
 
+## How to review: two passes
+
+Review in two passes, in order — don't mix them.
+
+**Pass 1 — file by file, for shape.** Take each changed file on its own and read it for its
+own shape: does this model / view / controller / data file read like Odoo wrote it? Apply the
+principles below (ORM, security, migrations, customer-readiness, tests) to *that one file*.
+You're not yet asking whether the feature is correct — only whether each file is well-formed Odoo.
+
+**Pass 2 — the whole change, after you understand the logic.** Only once you've read every
+file, step back and review the change as one system. Trace the primary user action end to end
+across the files — from the view or route, through the model and access checks, into the DB.
+This is the pass that catches what no single file can show: user input meeting `sudo`, limits
+or columns that disagree between two files, the same job done two ways, and behavior that
+doesn't match the intent.
+
+A Pass 1 finding is "this *file* is shaped wrong." A Pass 2 finding is "these files, *together*,
+do the wrong thing." You need both — most of the dangerous bugs only surface in Pass 2.
+
 ## Principles
 
 ### Read for the shape, not the syntax

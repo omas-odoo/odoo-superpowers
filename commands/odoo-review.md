@@ -1,5 +1,5 @@
 ---
-description: Review a GitHub PR against Odoo PSDU conventions — multi-agent, terminal-only, read-only
+description: Review a GitHub PR against Odoo PSDU conventions — business need, file-by-file, then full-logic; before/after fixes; terminal-only, read-only
 argument-hint: <pr-number | pr-url>
 ---
 
@@ -7,7 +7,7 @@ argument-hint: <pr-number | pr-url>
 
 You are reviewing the pull request identified by: **$ARGUMENTS**
 
-This review is **read-only**. Print findings in the terminal. Do **not** post comments,
+This review is **read-only**. Print the report in the terminal. Do **not** post comments,
 push, or write anything to GitHub.
 
 ## 1. Guard
@@ -22,66 +22,98 @@ Example: /odoo-review 42
 
 ## 2. Fetch the PR (read-only)
 
-`gh pr diff` and `gh pr view` accept a number, a full URL, or a branch, and resolve the
-repo from the local remote. Run:
+`gh pr view` / `gh pr diff` accept a number, URL, or branch and resolve the repo from the
+local remote. Run:
 
 - `gh pr view "$ARGUMENTS" --json number,title,body,author,headRefName,baseRefName,files`
 - `gh pr diff "$ARGUMENTS"`
 
 If `gh` errors (not authenticated, PR not found, no repo), surface the **real error** and
-stop. Never fabricate a review for a PR you couldn't fetch. If the diff is empty, say so
-and stop.
+stop — never fabricate a review. If the diff is empty, say so and stop.
 
-## 3. Fan out — one subagent per review dimension
+**Scale check:** if the PR is large (many files), review **file by file** so no single
+context holds the whole diff — fetch a file's slice with `gh pr diff "$ARGUMENTS" -- <path>`
+when needed. If you ever truncate or skip a file, say so explicitly in the report; never let a partial review read as complete.
 
-Dispatch the following review agents **in parallel** (a single message with multiple Task
-tool calls). Give each agent the PR title, the changed-file list, and the full diff. Each
-agent MUST invoke the `odoo-code-review` skill first, then review **only its assigned
-dimension**. Each returns a list of findings; an empty list is a valid answer.
+## 3. Establish the business need (do this first)
 
-Each finding must be: `severity` (blocker / warning / nit), `shape` (the named pattern,
-e.g. "stored compute depending on runtime context"), `file:line`, `why` (one line), `fix`
-(one line).
+Before any code critique, work out **what this PR is for**, in plain language. Pull from the
+PR title/body, the linked `project.task` (the ticket id / `task_ids`), and what the code
+actually does. Write 2–4 simple sentences a non-developer could follow: the customer problem,
+what a user can now do, and the shape of the solution. This frames every finding that follows.
 
-1. **ORM & shape** — stored computes depending on context/time/`env.user`; `search(...)[0]`
-   vs `limit=1`; per-record writes that should be batched; reflexive `ensure_one()`; code
-   that doesn't read like Odoo wrote it.
-2. **Security** — `sudo()` without a justifying comment; `has_group(...)` checks in business
-   logic that belong in `ir.rule`/`ir.model.access`; the access CSV (public-group reads);
-   self-less model methods doing external I/O (RPC-attackable); secret fields without
-   `groups='base.group_system'`.
-3. **Migrations — the absence test** — scan the diff for: new `required=True` field, field
-   type change, renamed field/model, removed field/model, new `_sql_constraints`, changed
-   `ondelete`, edits to `noupdate="1"` records. ANY of these **without** a matching
-   `migrations/<version>/` script **and** a `__manifest__.py` version bump is a blocker.
-4. **Customer-readiness** — untranslated user-facing strings (missing `_()`); unclear field
-   labels; missing/empty demo data for the new feature; anything that would break a clean
-   `-i` install on a fresh DB.
-5. **Tests** — tests named after implementation not behavior; tests that assume a polluted
-   DB; new model/flow with no test at all.
+## 4. Phase A — review file by file (the skill's Pass 1)
 
-## 4. Synthesize — one report, in the terminal
+For **each changed file**, dispatch a review subagent (run them in parallel — a single
+message with multiple Task tool calls; for a large PR, batch them). Give each agent that
+file's diff and tell it to:
 
-Collect all findings, drop duplicates (same file:line + shape), and print a single report:
+1. invoke the `odoo-code-review` skill, then
+2. perform the skill's **Pass 1** on **only that file** — read it for its own shape against
+   the skill's principles (ORM, security, migrations, customer-readiness, tests).
+
+The skill owns *what* to look for — don't restate its checklist here; the agents get it by
+invoking the skill. Each agent returns its findings in the **before/after** shape from §6.
+
+## 5. Phase B — full-logic review (the skill's Pass 2)
+
+After every file agent returns, run the skill's **Pass 2** on the change as one system.
+Pass 2 needs to see **all files at once**, so it can't be a per-file agent — run it either in
+the main session or via a single subagent given the **whole** diff. It invokes
+`odoo-code-review` and traces the primary user action end to end across files (e.g. *portal
+user → upload → validate → parse → product lookup → create order*), surfacing what file-by-file
+can't: user input meeting `sudo`, limits/columns that disagree between files, duplicated logic,
+and behavior that doesn't match the business need from §3.
+
+Report these in the same before/after shape where a concrete code change applies; otherwise
+state the issue, the risk, and the recommended direction.
+
+## 6. Output — one report, in the terminal
+
+Use this exact structure. Keep every **Why** to one or two plain sentences — explain the
+*shape* and the impact simply, not in jargon.
 
 ```
 # Review: <PR title> (#<number>)
 <author> · <headRefName> → <baseRefName> · <N> files changed
 
-## Blockers
-- **<shape>** — `file:line`
-  <why>. Fix: <fix>.
+## Business need
+<2–4 plain sentences from §3>
 
-## Warnings
-- ...
+---
 
-## Nits
-- ...
+## File-by-file
 
-## Missing / absence
-- <e.g. "new required field `x` on `model` but no migrations/<ver>/ script">
+### `path/to/file.py`
+**<short title / shape>** — `file:line` · <🔴 blocker | 🟠 warning | 🟡 nit>
+
+Before
+```python
+<the current code>
+```
+After
+```python
+<the corrected code>
+```
+Why: <one or two simple sentences — what's wrong and what the fix buys>
+
+<repeat per finding; if a file is clean, write "✅ No issues.">
+
+---
+
+## Full-logic review
+<cross-file / end-to-end findings from §5, same Before/After + Why shape where code applies>
+
+---
+
+## Verdict
+<Would you hand this to the customer as-is? The single most important thing to fix first.>
 ```
 
-If a section is empty, omit it. End with a one-line verdict: whether you'd hand this PR to
-the customer as-is, and the single most important thing to fix first. Name *shapes*, not
-just fixes — so the author learns the pattern, per the `odoo-code-review` skill.
+Rules for the before/after blocks:
+- **Before** is the real code from the diff, unedited. **After** is the minimal corrected
+  version — change only what the finding is about, keep surrounding style.
+- One finding = one Before/After pair. Don't bundle unrelated changes.
+- Omit empty severity groups. If the whole PR is clean, say so plainly rather than padding.
+- Name the *shape* ("sudo search on user-controlled input") so the author learns the pattern,
+  per the `odoo-code-review` skill — not just the line fix.
