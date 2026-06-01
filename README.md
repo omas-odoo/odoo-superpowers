@@ -11,12 +11,38 @@ Odoo SA development skills plugin for PSDU work. Mirrors the [superpowers](https
 
 ## Install (Claude Code)
 
+This repo ships its own marketplace (`.claude-plugin/marketplace.json`), so add the
+marketplace first, then install the plugin by name. No manual `git clone` needed.
+
 ```bash
-# from the parent dir of this repo
-/plugin install ./odoo-superpowers
+# 1. register the marketplace (pick one source form)
+/plugin marketplace add omas-odoo/odoo-superpowers                          # owner/repo shorthand
+/plugin marketplace add https://github.com/omas-odoo/odoo-superpowers.git   # full git URL
+/plugin marketplace add /path/to/odoo-superpowers                           # local checkout (dev)
+
+# 2. install the plugin (format is <plugin>@<marketplace>)
+/plugin install odoo-superpowers@odoo-superpowers-dev
 ```
 
-Or add to your Claude Code marketplace and `/plugin install odoo-superpowers`.
+Private repo? Users need GitHub access for the shorthand/URL forms to fetch it.
+
+### Pre-register for a team
+
+To make it always available (e.g. via a shared `settings.json`), skip the `marketplace add`
+step and declare it in your Claude Code settings instead:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "odoo-superpowers-dev": {
+      "source": { "source": "git", "url": "https://github.com/omas-odoo/odoo-superpowers.git" }
+    }
+  },
+  "enabledPlugins": {
+    "odoo-superpowers@odoo-superpowers-dev": true
+  }
+}
+```
 
 ## Install (Codex)
 
