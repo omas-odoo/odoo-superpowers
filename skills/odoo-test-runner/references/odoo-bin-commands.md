@@ -1,6 +1,6 @@
 # `odoo-bin` Command Reference
 
-Source: Odoo 19 CLI docs. Only the commands and flags needed to **run a local DB, install a module, and test development work**. Other `odoo-bin` features (scaffold, populate, cloc, obfuscate, deploy, upgrade_code, i18n) are not in scope here.
+Use when you need to **run a local DB, install a module, or test development work** from the CLI. The `odoo-bin` commands and flags for exactly that (Odoo 19 CLI docs); other features (scaffold, populate, cloc, obfuscate, deploy, upgrade_code, i18n) are out of scope here.
 
 Assumes you run from a checkout of Odoo Community where `./odoo-bin` exists. If you installed via package or Docker, swap the binary name accordingly.
 

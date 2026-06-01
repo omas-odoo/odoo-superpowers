@@ -1,6 +1,6 @@
 # ORM Patterns Reference
 
-Source: recurring PSAE review feedback. Consult when writing model logic — computes, fields, constraints, overrides. The principles live in `SKILL.md`; this is the exact-rules lookup.
+Use when writing model logic — computes, fields, constraints, overrides. The principles live in `SKILL.md`; this is the exact-rules lookup, from recurring PSAE review feedback.
 
 ## Compute fields
 

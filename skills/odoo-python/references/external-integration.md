@@ -1,6 +1,6 @@
 # External Integration Reference
 
-Source: Odoo R&D review of `hr_attendance_zkteco` (xmo-odoo, tivisse) + PSAE integration work. Consult when calling an external API, device, or payment provider from Odoo. PSAE does a lot of this (biometric devices, payment gateways, customer ERPs) and the same mistakes recur.
+Use when calling an external system from Odoo — an API, a device, or a payment provider (biometric terminals, payment gateways, customer ERPs). The same integration mistakes recur; these patterns keep the call RPC-safe, resilient, and reviewable.
 
 ## Keep external-call logic out of the model
 

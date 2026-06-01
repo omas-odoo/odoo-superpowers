@@ -1,6 +1,6 @@
 # XML View Inheritance Reference
 
-Source: Odoo 19 Coding Guidelines. Use this when extending another module's view or creating a primary view based on one.
+Use when extending another module's view or creating a primary view based on one. Inheritance rules from the Odoo 19 Coding Guidelines.
 
 ## Standard inheritance
 

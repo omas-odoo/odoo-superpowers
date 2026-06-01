@@ -1,6 +1,6 @@
 # Module Structure Reference
 
-Source: Odoo 19 Coding Guidelines. This is the canonical layout — match it exactly. Filenames use `[a-z0-9_]` only. Directories `755`, files `644`.
+Use when creating or restructuring a module's files and directories. The canonical layout (Odoo 19 Coding Guidelines) — match it exactly. Filenames use `[a-z0-9_]` only. Directories `755`, files `644`.
 
 ## Directory layout
 

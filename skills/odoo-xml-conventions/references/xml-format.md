@@ -1,6 +1,6 @@
 # XML Format Reference
 
-Source: Odoo 19 Coding Guidelines. Use this when writing or reviewing any `<record>`, `<menuitem>`, `<template>`, or data file.
+Use when writing or reviewing any `<record>`, `<menuitem>`, `<template>`, or data file. Formatting rules from the Odoo 19 Coding Guidelines.
 
 ## Record notation
 

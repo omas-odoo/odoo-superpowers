@@ -1,6 +1,6 @@
 # XML ID Naming Reference
 
-Source: Odoo 19 Coding Guidelines. Use this when picking an `id` for any `<record>`, `<menuitem>`, `<template>`, group, or rule.
+Use when picking an `id` for any `<record>`, `<menuitem>`, `<template>`, group, or rule. Naming rules from the Odoo 19 Coding Guidelines.
 
 ## The patterns
 

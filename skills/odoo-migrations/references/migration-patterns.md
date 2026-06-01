@@ -1,6 +1,6 @@
 # Migration Patterns Reference
 
-Source: Odoo upgrade-util + PSAE practice. The principles and the "you owe a migration" trigger table live in `SKILL.md`; this is the exact-code lookup. Everything here is `util`-first — bare `cr.execute` appears only where no helper exists, always guarded.
+Use when writing the actual code for a migration script. The principles and the "you owe a migration" trigger table live in `SKILL.md`; this is the exact-code lookup. Everything here is `util`-first (Odoo upgrade-util + PSAE practice) — bare `cr.execute` appears only where no helper exists, always guarded.
 
 ## Where scripts live
 

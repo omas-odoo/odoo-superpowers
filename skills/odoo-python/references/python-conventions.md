@@ -1,6 +1,6 @@
 # Python Conventions Reference
 
-Source: Odoo 19 Coding Guidelines. Lookup-only — consult when writing Python in `models/`, `controllers/`, `wizard/`, `report/`, or `tests/`.
+Use when writing Python in `models/`, `controllers/`, `wizard/`, `report/`, or `tests/`. Lookup-only — conventions from the Odoo 19 Coding Guidelines.
 
 ## Imports
 

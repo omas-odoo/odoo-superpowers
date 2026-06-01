@@ -1,6 +1,6 @@
 # Performance Reference
 
-Source: recurring PSAE review feedback. The single most-flagged class of issue. Consult when a method touches more than one record or runs in a cron/batch context.
+Use when a method touches more than one record or runs in a cron/batch context. The single most-flagged class of issue in PSAE review.
 
 ## No query inside a loop
 
