@@ -50,17 +50,3 @@ Every correction is data. If the user tells you "we don't do it that way in PSDU
 2. When the journal hits 5+ entries, suggest running `refining-odoo-skills` to fold the lessons back into the actual skill files.
 
 Don't let the journal become a graveyard. Surface it.
-
-## What good looks like
-
-- A new model where the manifest, the model, the views, the security, and the demo data all answer one clear question.
-- A code review comment that names a *shape* of bad code ("stored compute depending on context") rather than a lint nit.
-- A test run on a freshly-created tmp DB that comes back green, dropped after.
-- A `project.task` closed with a comment that the customer would understand without translation.
-
-## What bad looks like
-
-- "I'll just patch this private method, the customer won't upgrade for a year." — they will.
-- Tests on the dev DB you've been using for three projects. — green means nothing.
-- A `sudo()` with no comment. — the next reviewer has to guess.
-- A skill that hasn't been edited in three months despite five corrections. — the journal is whispering, listen.

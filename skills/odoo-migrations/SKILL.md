@@ -62,16 +62,3 @@ def migrate(cr, version):
 ### Verify against a snapshot of the OLD version — not a fresh install
 
 A migration "tested" by installing on a clean DB isn't tested — that's just an install. A real test loads a dump of the *previous* version's data and upgrades it. See `references/migration-patterns.md` for the dump → load → `-u` loop.
-
-## What good looks like
-
-A diff that adds a required field, bumps `__manifest__.py`, adds `migrations/<v>/post-migration.py` that backfills existing rows, and was verified against a snapshot of the live DB.
-
-## What bad looks like
-
-- A new required field, no version bump, no `migrations/` dir → upgrade dies on NOT NULL.
-- `cr.execute("ALTER TABLE ... DROP COLUMN ...")` + a hand-written `DELETE FROM ir_model_fields` — that's `util.remove_field` reimplemented badly, and it misses indirect deps.
-- A `pre-migration.py` that calls ORM methods (the registry isn't built yet).
-- "Tested" only by reinstalling on a clean DB.
-
-For the full util catalog, per-shape code, version-bump convention, and the verification loop, see `references/migration-patterns.md`.

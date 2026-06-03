@@ -87,19 +87,6 @@ For the actual script conventions (util-first patterns, pre/post/end timing, ver
 - **A test that runs on a polluted DB is worse than no test** — it gives false confidence. Demand the test-runner skill was used.
 - **Tests should describe behavior, not implementation.** `test_user_can_see_own_tickets` is a test. `test_compute_method` is not.
 
-## What good looks like
-
-A review that points at three things:
-1. A *shape* — "this stored compute reads `env.context`, that's the problem."
-2. A *missing* — "I don't see an `ir.model.access.csv` line for the new model."
-3. A *customer concern* — "the field label `is_blocked` will appear in French as 'is_blocked' — wrap it in `_()` and add a translation."
-
-## What bad looks like
-
-- A review that's all "use `f'{x}'` instead of `.format()`." That's lint's job, not yours.
-- A review that approves without running the module on a fresh DB. The reviewer is now the regression.
-- A "LGTM" on a PR that adds `sudo()` with no comment. The next reviewer inherits the problem.
-
 ## When you find something
 
 Don't just say "this is wrong." Name the *shape* — "stored compute depending on runtime context" — so the author learns the pattern, not just the fix. That's what makes review compound across reviews.

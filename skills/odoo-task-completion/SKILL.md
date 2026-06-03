@@ -54,23 +54,6 @@ Any "no" means more work, not a smaller commit.
 
 Then say "done" — and link the ticket, the branch, and the verification evidence (test output, shell session, or screenshot). "Done" without that evidence is a claim, not a fact.
 
-## What good looks like
-
-> *Task #58231 closed.*
->
-> - Branch: `19.0-58231-link-helpdesk-to-task-odoo-gram`
-> - Code review (self): clean, see notes in PR
-> - Tests: `odoo-bin db init → -i project_task_helpdesk_link --test-enable --stop-after-init → db drop` → 14/14 green
-> - Customer-readiness: demo data present, migration tested against staging snapshot, field labels reviewed
-> - Ticket comment: written in customer-readable language, attached screenshot
-
-## What bad looks like
-
-- "Tests pass" with no link to the test run output.
-- A diff with 12 files, no security update, and a 3-word commit message.
-- A ticket closed with "fixed in commit abc123" and nothing else.
-- Running through the gates in the wrong order — tests before review means you're testing un-reviewed code.
-
 ## If a gate keeps failing
 
 If you're stuck on the same gate for a third pass, that's a signal — not a personal failing. Note it in `skills/_journal.md` ("Gate 2 keeps failing because I forget to install dependencies in the tmp DB"). The `refining-odoo-skills` skill will eventually turn that into either a sharper principle in one of the skills, or a script change.

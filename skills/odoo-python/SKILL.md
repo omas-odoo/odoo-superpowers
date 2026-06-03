@@ -52,7 +52,7 @@ If you catch yourself writing an `<a href>` string, an action dict, or a float `
 - **Dead code is a blocker, not a nitpick.** Unused const files, one-line wrappers, `ensure_one()` that guards nothing — delete them. But never break PEP 8 or readability just to save lines.
 - **Error and log messages name the record and the problem.** `"Error"` tells the support tech nothing. `_("Invoice %s has no journal", move.name)` tells them exactly where to look.
 - **Don't mix quote styles in one file.** Pick `"` or `'` and stay consistent — the diff stays clean and the review skips the nitpick.
-- **Let the method breathe — group with blank lines.** Inside a method, separate logical phases (guards → fetch/compute → write/act → return) with a single blank line, and keep related statements touching. A short method stays compact; the longer it grows the more it needs the breaks — but sparingly, a double blank line inside a body is an `E303` finding. (If it has many phases, it's probably two methods.)
+- **Let the code breathe — group with blank lines.** Separate a function's phases (guards → compute → side-effect → return) with a blank line, and keep statements that belong together touching. A 2–3 line helper stays compact and can sit right next to its siblings; but the longer a method gets, the more it needs the breaks — never drop a 30-line block as one unbroken wall.
 
 ### Security in Python code
 
@@ -74,44 +74,3 @@ If you catch yourself writing an `<a href>` string, an action dict, or a float `
 | Imports, naming, attribute order, idioms, transactions, translation idiom, PEP8 exceptions | `references/python-conventions.md` |
 
 For the stored-compute-is-deterministic principle at review time, see also `odoo-code-review`. For where Python files live in the module, see `odoo-module-development`.
-
-## What good looks like
-
-```python
-# B has its own compute; A's compute touches only A.
-amount_total = fields.Monetary(compute="_compute_amount_total", store=True)
-
-@api.depends("line_ids.subtotal")
-def _compute_amount_total(self):
-    for order in self:
-        order.amount_total = sum(order.line_ids.mapped("subtotal"))
-
-# Override forwards unknown args, guards early.
-def _get_next_date(self, last_call, *args, **kwargs):
-    if self.frequency != "every_two_months":
-        return super()._get_next_date(last_call, *args, **kwargs)
-    return last_call + relativedelta(months=2)
-
-# Group once with .grouped(), not a hand-rolled dict.
-partners = self.env["res.partner"].search([("active", "=", True)])
-by_country = partners.grouped("country_id")   # {country: partners}
-```
-
-## What bad looks like
-
-```python
-# Cross-writing fields from one compute — recompute order roulette.
-@api.depends("line_ids")
-def _compute_total(self):
-    for order in self:
-        order.amount_total = sum(order.line_ids.mapped("price"))
-        order.tax_total = sum(order.line_ids.mapped("tax"))   # belongs in its own compute
-
-# hasattr hiding a super() bug — always False, parent never runs.
-if hasattr(super, "_onchange_type"):
-    super()._onchange_type()
-
-# Query inside a loop — N round-trips to Postgres.
-for order in self:
-    partner = self.env["res.partner"].search([("id", "=", order.partner_id.id)])
-```

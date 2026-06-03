@@ -48,15 +48,15 @@ The single most repeated finding is not a bug — it's *reaching around the fram
 
 These recur on nearly every PR. They're house conventions, not deep framework knowledge — get them right once and the review moves on to the logic.
 
-- **`const` by default; `let` only when you reassign; never `var`.** "Mutating an object held in a `const`" is fine — `const` blocks rebinding, not mutation. `var` is a finding every time.
-- **`camelCase` for variables and functions.** `PascalCase` is for classes/constructors only; `snake_case` is Python leaking into JS. Prefix a variable with `$` *only* when it holds a jQuery object.
-- **ES6 imports — `import { x } from "..."`.** Not `require(...)`, not `odoo.define(...)`. Import OWL hooks from `@odoo/owl` (not `owl.hooks`), `_t` from `@web/core/l10n/translation`, `patch` from `@web/core/utils/patch`.
-- **Pick the semantic array method.** `map` to transform, `filter` to select, `reduce` to fold, `some`/`every` for a test, `Map.groupBy`/`Object.groupBy` to bucket — over a hand-rolled `for`/`forEach`+`push`. A repeated lookup inside a loop is an O(n²) trap: index it into a `Map`/object once.
-- **Guard clauses over nested `if`/`else`.** Return early for the special cases; keep the happy path un-indented. Reviewers reword deep nesting into guards constantly.
-- **`===`/`!==`, and remember an empty array is *truthy* in JS.** `if (list)` does not check emptiness — that Python instinct is a bug here. Use `list.length`. Don't compare arrays/objects with `===` (it's reference identity); compare element-wise or via `Set`.
-- **Every user-facing string is wrapped in `_t()`.** Titles, bodies, notifications, action names. An un-wrapped string can't be translated; the reviewer adds `_t` and asks for the `.po` entry.
-- **No `debugger`, no stray `console.log`, no dead/commented code.** Leftover `debugger` is the second-most-repeated literal comment in the whole corpus. If you must leave commented code, leave a `// why` next to it.
-- **Let the code breathe — group with blank lines.** Separate a function's phases (guards → compute → side-effect → return) with a blank line, and keep statements that belong together touching. A 2–3 line helper stays compact and can sit right next to its siblings; but the longer a method gets, the more it needs the breaks — never drop a 30-line block as one unbroken wall.
+- [ ]  **`const` by default; `let` only when you reassign; never `var`.** "Mutating an object held in a `const`" is fine — `const` blocks rebinding, not mutation. `var` is a finding every time.
+- [ ]  **`camelCase` for variables and functions.** `PascalCase` is for classes/constructors only; `snake_case` is Python leaking into JS. Prefix a variable with `$` *only* when it holds a jQuery object.
+- [ ]  **ES6 imports — `import { x } from "..."`.** Not `require(...)`, not `odoo.define(...)`. Import OWL hooks from `@odoo/owl` (not `owl.hooks`), `_t` from `@web/core/l10n/translation`, `patch` from `@web/core/utils/patch`.
+- [ ]  **Pick the semantic array method.** `map` to transform, `filter` to select, `reduce` to fold, `some`/`every` for a test, `Map.groupBy`/`Object.groupBy` to bucket — over a hand-rolled `for`/`forEach`+`push`. A repeated lookup inside a loop is an O(n²) trap: index it into a `Map`/object once.
+- [ ]  **Guard clauses over nested `if`/`else`.** Return early for the special cases; keep the happy path un-indented. Reviewers reword deep nesting into guards constantly.
+- [ ]  **`===`/`!==`, and remember an empty array is *truthy* in JS.** `if (list)` does not check emptiness — that Python instinct is a bug here. Use `list.length`. Don't compare arrays/objects with `===` (it's reference identity); compare element-wise or via `Set`.
+- [ ]  **Every user-facing string is wrapped in `_t()`.** Titles, bodies, notifications, action names. An un-wrapped string can't be translated; the reviewer adds `_t` and asks for the `.po` entry.
+- [ ]  **No `debugger`, no stray `console.log`, no dead/commented code.** Leftover `debugger` is the second-most-repeated literal comment in the whole corpus. If you must leave commented code, leave a `// why` next to it.
+- [ ]  **Let the code breathe — group with blank lines.** Separate a function's phases (guards → compute → side-effect → return) with a blank line, and keep statements that belong together touching. A 2–3 line helper stays compact and can sit right next to its siblings; but the longer a method gets, the more it needs the breaks — never drop a 30-line block as one unbroken wall.
 
 ## References (consult, don't memorize)
 

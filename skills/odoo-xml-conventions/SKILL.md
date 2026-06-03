@@ -32,19 +32,6 @@ For XML you don't need a principle for every detail — you need the template. T
 
 Read the relevant reference *before* writing the XML, not after. Renaming IDs after the fact creates migration debt for the customer.
 
-## What good looks like
-
-- A view file where every record's `id` matches the `name` (with dots for underscores), every action has a real human name, and the file groups records by model.
-- A security file whose group and rule IDs follow `<module>_group_<role>` and `<model>_rule_<group>` — so a reviewer scanning the CSV can predict the XML IDs.
-- An inheriting view that keeps the original ID (module prefix prevents collision) and has a `.inherit.<detail>` suffix on its `name`.
-
-## What bad looks like
-
-- View IDs like `view_form_1`, `my_form`, or anything that doesn't include the model name.
-- A single `<data>` file containing both updatable and non-updatable records mixed together.
-- An inherited view with a brand-new ID like `partner_form_extended_v2` — reviewers can't find the original at a glance.
-- Action `<field name="name">Stuff</field>` — the name is what users see in the breadcrumb. Make it meaningful.
-
 ## When the rules genuinely don't fit
 
 PSDU customer work occasionally has bespoke needs (customer-specific prefix, legacy IDs you can't rename without a migration). In those cases:

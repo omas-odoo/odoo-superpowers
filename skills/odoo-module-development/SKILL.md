@@ -56,22 +56,3 @@ The principles above tell you *how to think*. The references below hold the *exa
 | XML record id, view inheritance, menu/action naming | invoke the **`odoo-xml-conventions`** skill |
 
 If a reference doesn't match what you're seeing in PSDU code (customer legacy, project-specific exception), follow the existing code in that file and log the case in `skills/_journal.md`.
-
-## What good looks like
-
-A `project_task_helpdesk_link` module that:
-
-- Has a 6-line manifest naming its purpose and depending only on `project` and `helpdesk`.
-- Adds a single `helpdesk_ticket_ids = fields.One2many(...)` on `project.task` via `_inherit`.
-- Adds one view inheritance: a notebook page showing linked tickets.
-- Adds one security rule: users see only tickets they could see anyway.
-- Ships demo data linking one demo task to one demo ticket.
-- Has a `tests/test_link.py` proving the One2many returns the right tickets and respects access rules.
-
-## What bad looks like
-
-- A manifest depending on `base, web, mail, account, sale, purchase, stock, project` "to be safe."
-- A `_compute_status` that reads `fields.Datetime.now()` and is stored. Re-computing breaks every cron tick.
-- A model named `ProjectTaskExt` with field `data` of type `Text` containing JSON. Use real fields.
-- A button calling `self.env.cr.execute("UPDATE project_task SET ...")`. Use ORM. Always. Unless you're certifiably in a migration script and you've written a comment explaining why.
-- `sudo()` in `_compute_can_edit`. The user can now see records the rule said they couldn't.
