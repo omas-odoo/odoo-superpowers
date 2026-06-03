@@ -7,6 +7,8 @@ description: Use when writing or reviewing any .xml file in an Odoo module — v
 
 XML in Odoo is the API customers see — view labels, action names, security IDs survive across upgrades and end up in their muscle memory. Get the conventions right once, then stop thinking about them.
 
+> **Scope:** this skill covers *backend* XML — `ir.ui.view` records, actions, menus, security, data, reports. For OWL/QWeb **client templates** under `static/src` (`t-name`, `t-out`, `t-att-class`, `t-inherit`), use the **`odoo-js`** skill instead — the inheritance rules rhyme (no `position="replace"`, hide with `d-none`) but the directives and file conventions differ.
+
 ## Principles
 
 ### Conventions are not optional

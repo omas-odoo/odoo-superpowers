@@ -14,7 +14,8 @@ You're shipping a module to a customer, not a script to a notebook. Reach for th
 - **`odoo-module-development`** — before you write a new model, security file, or demo data. Anything that ends up in a `__manifest__.py`. Carries a reference for module structure.
 - **`odoo-migrations`** — when writing an `migrations/` upgrade script, or when a diff changes a field/model on a module already deployed to a customer. Owns the util-first patterns and the "you owe a migration" absence test.
 - **`odoo-python`** — before writing or reviewing any `.py` logic: models, computes, overrides, controllers, wizards. Carries PSAE principles for ORM correctness, performance, style, and references for exact patterns.
-- **`odoo-xml-conventions`** — before writing or reviewing any `.xml` file: views, actions, menus, security records, data files, QWeb templates. Carries references for XML naming, format, and inheritance.
+- **`odoo-xml-conventions`** — before writing or reviewing any *backend* `.xml` file: views, actions, menus, security records, data files. Carries references for XML naming, format, and inheritance. (For OWL/QWeb *client* templates under `static/src`, reach for `odoo-js`.)
+- **`odoo-js`** — before writing or reviewing anything under `static/src`: OWL components, services, `patch()` overrides, QWeb/OWL templates, SCSS. Carries PSAE principles for OWL correctness, the patch discipline, template conventions, and frontend JS style.
 - **`odoo-code-review`** — after writing Odoo code and before claiming it's done. Also when reviewing a teammate's PSDU PR.
 - **`odoo-test-runner`** — before saying "tests pass." Pollution in a long-lived dev DB makes green tests lie.
 - **`odoo-task-completion`** — when wrapping up a `project.task` ticket. Orchestrates review + test + the "would I show this to the customer" check.

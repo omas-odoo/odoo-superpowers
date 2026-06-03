@@ -49,6 +49,16 @@ do the wrong thing." You need both — most of the dangerous bugs only surface i
 - **A model method that doesn't use `self` and does external I/O is RPC-attackable.** Every public model method is reachable via RPC and server actions. Self-less external-call logic belongs in a module-level `utils.py`. Flag it when you see it on a model.
 - **Secret/credential fields need `groups='base.group_system'`, and reads need access-check-then-`sudo()`.** A `.sudo()` read of a protected field with no preceding `has_group` check defeats the protection.
 
+### Frontend (OWL / JS)
+
+A diff that touches `static/src` gets the same shape-level scrutiny as Python — invoke the **`odoo-js`** skill for the full set. The shapes that recur most in review:
+
+- **Extension that isn't `patch()`.** A reassigned `X.props`, a `Component.extend`, a `MainComponent.components = {...}` — all should be `patch(...)`. And a `patch` that re-implements the whole standard method instead of calling `super` is a time bomb: the customer loses the next Odoo hotfix to that method.
+- **DOM reached imperatively.** `document.getElementById`, `$(...)`, jQuery, `data-*` attributes read back out of the DOM — all mean state/`useRef`/`t-on` should have been used. Async work in `setup()`'s body instead of `onWillStart` is the same smell.
+- **A derived value that isn't a getter**, and a complex `t-if`/`t-att-class` inlined in the template instead of a getter the template reads.
+- **`t-esc` (deprecated), inline `style=`, or hiding a standard node with `position="replace"`/`t-if="False"`** instead of `t-out`, SCSS/Bootstrap classes, and `d-none`. The last one silently breaks other modules' xpaths.
+- **An un-`_t()`'d user-facing string, a leftover `debugger`/`console.log`, or `var`.** The first blocks translation; the others are pure noise the review shouldn't have to carry.
+
 ### Customer-readiness
 
 - **The PR isn't done until you'd be comfortable handing it to the customer without a cover note.** Customer-facing means: clear field labels, translated strings, demo data that demonstrates the feature, a migration that won't blow up their DB.

@@ -4,7 +4,7 @@ Odoo SA development skills plugin for PSDU work. Mirrors the [superpowers](https
 
 ## What's inside
 
-- **6 skills** (principles, not rules) — entry skill plus module dev, code review, test runner, task completion, and a self-refinement loop
+- **10 skills** (principles, not rules) — entry skill plus module dev, migrations, Python, XML conventions, JS/OWL frontend, code review, test runner, task completion, and a self-refinement loop
 - **Hooks** — block `git push` until you approve, auto-`ruff format` on Python edits, stub for Discord uncertainty capture
 - **`settings/settings.json`** — a permissions template you copy into project `.claude/settings.json` so common read-only commands don't prompt
 - **`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`** — values doc, auto-loaded by each harness
