@@ -52,6 +52,7 @@ If you catch yourself writing an `<a href>` string, an action dict, or a float `
 - **Dead code is a blocker, not a nitpick.** Unused const files, one-line wrappers, `ensure_one()` that guards nothing — delete them. But never break PEP 8 or readability just to save lines.
 - **Error and log messages name the record and the problem.** `"Error"` tells the support tech nothing. `_("Invoice %s has no journal", move.name)` tells them exactly where to look.
 - **Don't mix quote styles in one file.** Pick `"` or `'` and stay consistent — the diff stays clean and the review skips the nitpick.
+- **Let the method breathe — group with blank lines.** Inside a method, separate logical phases (guards → fetch/compute → write/act → return) with a single blank line, and keep related statements touching. A short method stays compact; the longer it grows the more it needs the breaks — but sparingly, a double blank line inside a body is an `E303` finding. (If it has many phases, it's probably two methods.)
 
 ### Security in Python code
 

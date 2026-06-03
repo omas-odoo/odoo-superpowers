@@ -186,6 +186,36 @@ def action(self):
 
 Trade off against readability — over-extracting hurts too.
 
+## Whitespace & grouping — let the method breathe
+
+PEP 8's "use blank lines in functions, sparingly, to indicate logical sections" is a real rule, not decoration. Separate a method's phases with a single blank line; keep the statements that belong together touching.
+
+```python
+# BAD — one unbroken wall.
+def action_apply(self):
+    self.ensure_one()
+    lines = self.line_ids.filtered(lambda line: line.active)
+    total = sum(lines.mapped('amount'))
+    discount = total * self.rate / 100
+    self.amount = total - discount
+    self.message_post(body=_("Applied %s discount", discount))
+    return True
+
+# GOOD — guard, then compute, then act.
+def action_apply(self):
+    self.ensure_one()
+
+    lines = self.line_ids.filtered(lambda line: line.active)
+    discount = sum(lines.mapped('amount')) * self.rate / 100
+
+    self.amount -= discount
+    self.message_post(body=_("Applied %s discount", discount))
+    return True
+```
+
+- **The longer the method, the more it needs the breaks** — split it into guards / fetch / compute / write / return. If it has more than a couple of those phases it is probably two methods (see *Method shape*).
+- **Group, don't atomise.** One blank line between *logical* groups, not between every statement — a two-line method needs none. A *double* blank line inside a body is `E303`; keep it to one.
+
 ## PEP8 exceptions
 
 These are explicitly ignored in Odoo style:
