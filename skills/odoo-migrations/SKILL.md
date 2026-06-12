@@ -1,6 +1,6 @@
 ---
 name: odoo-migrations
-description: Use when writing or reviewing any migrations/ upgrade script, or when a diff changes a field or model on a module already deployed to a customer. Covers when you owe a migration, the util-first rule, pre/post/end timing, and verifying against a real pre-upgrade snapshot.
+description: Use when writing or reviewing any migrations/ upgrade script, when a diff changes a field or model on a module already deployed to a customer, or when porting a module to a new Odoo major version. Covers when you owe a migration, the util-first rule, pre/post/end timing, the research-then-mechanical-pass order for version ports, and verifying against a real pre-upgrade snapshot.
 ---
 
 # Odoo Migrations
@@ -27,16 +27,7 @@ A fresh install is irrelevant for a deployed module — what matters is **upgrad
 
 ### Always use the upgrade `util` library
 
-On PSAE/PS work (odoo.sh, Odoo SA) `odoo.upgrade.util` is available and is **the** way to write migrations. Reach for a `util` helper first — it handles the ORM cache, stored recomputes, column/table existence, FK integrity, and indirect dependencies that bare SQL silently breaks.
-
-```python
-from odoo.upgrade import util
-
-util.rename_field(cr, "psae.task", "old_name", "new_name")   # also fixes ir_model_fields + FKs
-util.remove_field(cr, "psae.task", "legacy_status")          # column + registry + indirect deps
-util.rename_model(cr, "old.model", "new.model")
-util.recompute_fields(cr, "psae.task", ["priority_score"])
-```
+On PSAE/PS work (odoo.sh, Odoo SA) `odoo.upgrade.util` is available and is **the** way to write migrations. Reach for a `util` helper first — it handles the ORM cache, stored recomputes, column/table existence, FK integrity, and indirect dependencies (views, server actions, related fields) that bare SQL silently breaks. Helper catalog and per-shape patterns in `references/migration-patterns.md`.
 
 Drop to bare `cr.execute(...)` **only** when no helper covers the case (an arbitrary backfill, a dedupe) — and even then guard with `util.column_exists` / `util.table_exists` first. A `DROP`/`ALTER`/`UPDATE` written directly, with no `util` and no guard, is a review blocker.
 
@@ -50,15 +41,24 @@ Rule of thumb: needs the new schema → `post-`. Operates on the old one → `pr
 
 ### Always handle first-install
 
-`migrate(cr, version)` receives `version=None` on a fresh install. Guard it — there's nothing to migrate from:
-
-```python
-def migrate(cr, version):
-    if not version:
-        return
-    ...
-```
+`migrate(cr, version)` receives `version=None` on a fresh install — guard it and `return`, there's nothing to migrate from. Signature in `references/migration-patterns.md`.
 
 ### Verify against a snapshot of the OLD version — not a fresh install
 
-A migration "tested" by installing on a clean DB isn't tested — that's just an install. A real test loads a dump of the *previous* version's data and upgrades it. See `references/migration-patterns.md` for the dump → load → `-u` loop.
+A migration "tested" by installing on a clean DB isn't tested — that's just an install. A real test loads a dump of the *previous* version's data and upgrades it. See `references/migration-patterns.md` for the dump → load → `-u` loop, and `odoo-test-runner` for the verification layers.
+
+### Research what became standard before you port — cheapest source first
+
+Before porting a feature, find out whether the target version already does it as standard. A feature now covered by standard is a **drop, not a port**. Research in cost order: your own knowledge of what became standard in TARGET → official docs → release notes between SOURCE and TARGET → grep `$ODOO_SRC` only as a last resort. Agree KEEP / DROP / REWRITE per feature with the handler before touching code. Never delete an override just because its hook is gone — the business requirement remains; relocate the logic.
+
+### Run the mechanical pass before hand-rewriting
+
+Odoo ships its own codemod scripts — run `odoo-bin upgrade_code` first and let it do the mechanical renames, then hand-fix what's left rather than rewriting from memory. Hand rewrites use the per-file-type skills' version-sensitive sections: `odoo-python` for models, `odoo-xml-conventions` for views, `odoo-js` for the frontend (where upgrades break silently). Exact command and the manifest version reset in `references/migration-patterns.md`.
+
+### A `migrations/` script only when the schema actually changed
+
+A clean port often needs no migration script at all — write one only when the schema actually changed (renamed/removed field or model, new constraint). The same util-first rule applies. Before writing it, check what Odoo SA's own upgrade already handles and don't duplicate a rename the platform does for you.
+
+### Commit version ports under `[UPG]`
+
+A port carries the `[UPG]` tag, not `[IMP]`/`[REF]`: `[UPG][TASK_ID] module: migrate SOURCE → TARGET`. The manifest `version` resets to the target major (`odoo-module-development` for the bump).

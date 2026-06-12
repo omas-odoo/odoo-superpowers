@@ -28,9 +28,9 @@ For `<record>`-style declarations, follow this attribute order:
 
 Use these instead of the equivalent `<record>`:
 
-| Tag | Replaces |
-|---|---|
-| `<menuitem>` | `<record model="ir.ui.menu">` |
+| Tag          | Replaces                                                           |
+| ------------ | ------------------------------------------------------------------ |
+| `<menuitem>` | `<record model="ir.ui.menu">`                                      |
 | `<template>` | `<record model="ir.ui.view">` when only `arch` is set (QWeb views) |
 
 ```xml
@@ -92,6 +92,30 @@ Actions are user-visible — the `name` field shows in breadcrumbs. Give it a re
 </record>
 ```
 
+## Search views — never empty
+
+A `<search>` with no content is worse than the default Odoo generates: it overrides the freebie
+with nothing. Always give the obvious search field(s), the status/lifecycle filters, and a
+`Group By` group:
+
+```xml
+<record id="plant_nursery_view_search" model="ir.ui.view">
+    <field name="name">plant.nursery.view.search</field>
+    <field name="model">plant.nursery</field>
+    <field name="arch" type="xml">
+        <search>
+            <field name="name"/>
+            <field name="partner_id" operator="child_of"/>
+            <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+            <separator/>
+            <group expand="0" string="Group By">
+                <filter string="Partner" name="group_partner" context="{'group_by': 'partner_id'}"/>
+            </group>
+        </search>
+    </field>
+</record>
+```
+
 ## Quick checklist before saving an XML file
 
 - [ ] All `id` attributes match the model/role naming pattern (see `xml-naming.md`)
@@ -100,3 +124,5 @@ Actions are user-visible — the `name` field shows in breadcrumbs. Give it a re
 - [ ] No `<data>` tag wrapping the whole file just to use `noupdate=1` — put it on `<odoo>` instead
 - [ ] Actions have human-readable names
 - [ ] Used `<menuitem>` / `<template>` when applicable
+- [ ] Any `<search>` view carries fields, filters, and a group-by — never empty
+- [ ] Field/button gating uses the target version's syntax — inline `invisible=` (v17+) vs `attrs=`/`states=` (v16-); see `version-changes.md`

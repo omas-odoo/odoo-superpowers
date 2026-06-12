@@ -1,6 +1,6 @@
 ---
 name: odoo-xml-conventions
-description: Use when writing or reviewing any .xml file in an Odoo module — views, actions, menus, security records, data files, QWeb templates. Holds Odoo's naming, formatting, and inheritance conventions. Invoke before adding records to views/, security/, data/, or report/ directories.
+description: Use when writing, reviewing, or migrating any .xml file in an Odoo module — views, actions, menus, security records, data files, QWeb templates. Holds Odoo's naming, formatting, inheritance, and cross-version syntax conventions. Invoke before adding records to views/, security/, data/, or report/ directories.
 ---
 
 # Odoo XML Conventions
@@ -21,6 +21,11 @@ XML in Odoo is the API customers see — view labels, action names, security IDs
 
 For XML you don't need a principle for every detail — you need the template. The references give you copy-pasteable canonical forms. When in doubt, follow the form.
 
+### Views earn their place
+
+- **Never ship an empty `<search>`.** A search view with no fields, filters, or group-by is a worse default than the one Odoo generates for free — give the obvious search field, the status filters, and a sensible group-by.
+- **Justify every view type.** `list` and `form` always; `kanban`, `pivot`, `gantt`, `calendar`, `graph` only when the model genuinely earns one — each is surface area someone else maintains. Don't add views "just in case." → `references/xml-format.md`
+
 ## When to consult which reference
 
 | Writing... | Read |
@@ -29,6 +34,8 @@ For XML you don't need a principle for every detail — you need the template. T
 | A view that inherits another | `references/xml-inheritance.md` |
 | A menu or template tag | `references/xml-format.md` (custom tags section) |
 | A `data/*.xml` file | `references/xml-format.md` (noupdate / data tag section) |
+| A search view, or deciding which view types to add | `references/xml-format.md` (search / view-types section) |
+| Gating fields/buttons, list vs tree, or any pre/post-v17 syntax | `references/version-changes.md` |
 
 Read the relevant reference *before* writing the XML, not after. Renaming IDs after the fact creates migration debt for the customer.
 

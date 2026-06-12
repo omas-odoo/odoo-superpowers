@@ -122,6 +122,37 @@ def migrate(cr, version):
 
 Convention `<odoo_version>.<major>.<minor>.<patch>`. Bump the version but forget the `migrations/<version>/` directory and the upgrade silently does nothing about your data.
 
+## Porting a module to a new major version
+
+The judgment (research order, mechanical-pass-first, schema-changed-only, `[UPG]` tag) lives in `SKILL.md`; these are the exact commands.
+
+### Mechanical codemod pass — run first
+
+```bash
+odoo-bin upgrade_code <module>   # Odoo's own codemods, e.g. 18.1-00-sql-constraint.py
+```
+
+Run this before any hand-rewriting — it applies the renames/rewrites the platform already knows about. Then hand-fix what it leaves, using the version-sensitive sections of `odoo-python` / `odoo-xml-conventions` / `odoo-js`.
+
+### Manifest version on a port — reset, don't patch-bump
+
+```python
+{
+    "version": "19.0.1.0.0",   # TARGET major, reset to .1.0.0 — NOT a +1 patch bump
+}
+```
+
+A port resets to `<TARGET>.0.1.0.0`; an in-version data migration patch-bumps the last segment (see "Manifest version bumping" above).
+
+### Check what Odoo SA's upgrade already handles before writing a script
+
+```bash
+grep -r "<field_or_model>" $ODOO_SRC/upgrade/migrations/          # Odoo SA scripts
+grep -r "<field_or_model>" $ODOO_SRC/upgrade-specific/scripts/    # PSAE-specific scripts
+```
+
+If the platform already renames/merges it, don't duplicate it in your `migrations/` script.
+
 ## Verification — against a snapshot of the OLD version
 
 ```bash

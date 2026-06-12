@@ -1,6 +1,6 @@
 ---
 name: odoo-js
-description: Use when writing or reviewing any JavaScript, OWL component, QWeb/OWL template, or SCSS under static/src in an Odoo module — POS overrides, backend widgets, website/public widgets, services. Carries PSAE review-derived principles for OWL correctness, the patch() discipline, template conventions, and frontend JS style, plus references for exact patterns. Invoke before writing anything under static/src/.
+description: Use when writing, reviewing, or migrating any JavaScript, OWL component, QWeb/OWL template, or SCSS under static/src in an Odoo module — POS overrides, backend widgets, website/public widgets, services. Carries PSAE review-derived principles for OWL correctness, the patch() discipline, template conventions, frontend JS style, and cross-version upgrade gotchas, plus references for exact patterns. Invoke before writing anything under static/src/.
 ---
 # Odoo JS
 
@@ -12,60 +12,56 @@ The single most repeated finding is not a bug — it's *reaching around the fram
 
 ### Extend with `patch()`, and always reach `super`
 
-- **Customisation is `patch()`, not reassignment or prototypal tricks.** `import { patch } from "@web/core/utils/patch"`. Never `X.props = {...X.props, foo}`, never `Registries.Component.extend(...)`, never `MainComponent.components = {...}`. The reviewer rewrites all of these to `patch(...)` by reflex — it's the only form that can be cleanly unpatched and that composes with other modules' patches.
-- **Patch the right layer, separately.** `patch(X.prototype, {...})` for methods/`setup`; `patch(X, {...})` for static members like `template`; `patch(X.props.line.shape, {...})` for props; `patch(X.components, {...})` for sub-components. `props` is a *static* property — patching the prototype to add a prop is wrong.
-- **Always find a way to call `super`.** Copy-pasting an inherited method's whole body to change three lines is the most dangerous frontend pattern: the day Odoo ships a hotfix to that method, every customer who isn't on your fork silently loses it. Guard for your special case, then `return super.method(...arguments)` for everything else. "I couldn't see how to call super" means look harder — introduce a temp flag, override a smaller hook, anything.
-- **Never override a pure function to introduce a side-effect.** If `get_cashier()` returns a value and nothing else, don't override it to also mutate state. Put the side-effect in its own method and call it explicitly.
+- **Customisation is `patch()`, not reassignment or prototypal tricks.** Reassigning `X.props`, `Component.extend(...)`, `MainComponent.components = {...}` — the reviewer rewrites all of these to `patch(...)` by reflex. It's the only form that unpatches cleanly and composes with other modules' patches.
+- **Patch the layer you mean — they're separate objects.** The prototype for methods and `setup`, the class itself for static members like `template`, the props object for props. Patching the prototype to add a prop is wrong — `props` is static. (Exact forms in references.)
+- **Always find a way to call `super`.** Copy-pasting an inherited method's whole body to change three lines is the most dangerous frontend pattern: the day Odoo ships a hotfix to that method, every customer not on your fork silently loses it. Guard your special case, then `return super.method(...arguments)` for the rest. "I couldn't see how to call super" means look harder.
+- **Never override a pure function to introduce a side-effect.** If a getter returns a value and nothing else, don't override it to also mutate state. Put the side-effect in its own method and call it explicitly.
 - **Change props/template before you reach for a whole new component.** Most "I extended `OrderReceipt` into a new component" diffs should be `patch(OrderReceipt.props, ...)` plus a `t-if` in the inherited template. A new `Component` subclass is a maintenance liability you rarely need.
-- **Load POS master data through the Python loader, not an extra JS RPC.** Extra per-screen `orm.call`s add network round-trips the standard single-load avoids. Override the server-side loader (`_load_pos_data` / `_pos_data_process`) so your data rides the one RPC POS already makes.
+- **Load POS master data through the Python loader, not an extra JS RPC.** Override the server-side loader so your data rides the one RPC POS already makes, instead of per-screen `orm.call`s.
 
 ### Think in state and getters, not the DOM
 
-- **A value derived from state or props is a getter, not a stored field or a method.** `get total() { return ... }` recomputes on every render and never goes stale. Storing it in `this.x` in `setup()` means it's wrong the moment state changes; making it a no-arg method (`computeTotal()`) is just a getter with worse ergonomics. "make this a getter" is the most repeated component-level comment.
-- **Compute template conditions in the component, not inline in XML.** A complex `t-if` or `t-att-class` expression belongs in a getter the template *reads* — `t-att-class="badgeClass"` with `get badgeClass()` in the JS. The template stays declarative and the logic stays testable.
-- **The DOM is OWL's job — don't touch it.** No `document.getElementById`, no `$(...)`, no jQuery. To reach an element, `useRef("name")` + `t-ref="name"` in the template. To react to a click, `t-on-click` in the template, not `useListener` (deprecated) and not a manual `addEventListener`. Mixing legacy widgets and OWL components in one flow is always a smell.
-- **Side-effects belong in lifecycle hooks, not in `setup()`'s body or after render.** Async data loading goes in `onWillStart`; DOM-dependent work in `onMounted`; cleanup (`clearInterval`, listeners) in `onWillDestroy` (or return a teardown from `useEffect`). Don't override the entire `setup()` to inject one line — add a hook instead; hooks stack, a full override doesn't.
+- **A value derived from state or props is a getter — not a stored field, not a no-arg method.** `get total()` recomputes on every render and never goes stale; storing it in `this.x` in `setup()` is wrong the moment state changes. "make this a getter" is the most repeated component-level comment.
+- **Compute template conditions in the component, not inline in XML.** A complex `t-if` or `t-att-class` expression belongs in a getter the template *reads*. The template stays declarative and the logic stays testable.
+- **The DOM is OWL's job — don't touch it.** No `document.getElementById`, no `$(...)`, no jQuery. Reach an element with `useRef` + `t-ref`; react to a click with `t-on-click`, never a manual `addEventListener`. Mixing legacy widgets and OWL components in one flow is always a smell.
+- **Side-effects belong in lifecycle hooks, not `setup()`'s body.** Async load in `onWillStart`, DOM-dependent work in `onMounted`, cleanup in `onWillDestroy`. Don't override the entire `setup()` to inject one line — add a hook; hooks stack, a full override doesn't.
 
 ### Services, ORM and RPC
 
-- **Acquire dependencies with `useService`, and prefer the short hook.** `this.orm = useService("orm")`, `this.dialog = useService("dialog")` — not `this.env.services.orm` scattered through the methods. When a domain hook exists (`usePos()` → `this.pos`), use it instead of `this.env.services.pos`.
-- **Call models through `orm`, not legacy `rpc({model, method, args})`.** `this.orm.call("res.partner", "write", [...])`. Reserve bare `rpc(route, params)` for actual controller routes.
-- **A user-triggered RPC that can fail needs a visible failure.** Wrap it (`try/catch`, or `.catch(err => ({ err }))` then a guard) and surface an `AlertDialog`/`ErrorDialog` — never let a rejected promise vanish silently. For independent calls, fire them with `Promise.all` instead of awaiting in sequence.
+- **Acquire dependencies with `useService`, and prefer the domain hook.** `useService("orm")`, not `this.env.services.orm` scattered through the methods; when a hook like `usePos()` exists, use it.
+- **Call models through `orm`, not legacy `rpc({model, method, args})`.** Reserve bare `rpc(route, params)` for actual controller routes.
+- **A user-triggered RPC that can fail needs a visible failure.** Wrap it and surface an error dialog — never let a rejected promise vanish silently. Fire independent calls with `Promise.all` instead of awaiting in sequence.
 
 ### Templates are declarative — keep the logic out
 
-- **`t-out`, never `t-esc`.** `t-esc` is deprecated; every reviewer flags it. (And `t-out` is for *values* — a literal `<td>Total</td>` needs no directive at all.)
-- **Conditional classes use the object form.** `t-att-class="{ 'text-danger': hasError }"` — not a ternary that concatenates class strings. Multiple conditions read cleanly; a getter returning the object reads even better.
-- **Hide standard elements with `d-none`, not `t-if="False"` or `position="replace"`.** Removing a node another module's xpath depends on breaks that module silently. Add a `d-none` class (or `invisible`) so the node stays in the tree. Same reason `position="replace"` is banned — target the parent and *add*.
-- **xpath on structure, not on text.** Use `hasclass('foo')`, not `@class='foo'` (which is an exact-string match); avoid predicating on `@t-if='...'` string contents. Always set `t-inherit-mode` and keep the expression as short as it can be while staying unambiguous.
-- **No inline styles, no `data-*` attributes on OWL templates.** Inline `style="..."` doesn't get cached and costs refresh time — move it to SCSS or a Bootstrap utility class. A `data-*` attribute on an OWL node almost always means you're about to read it back from the DOM, which means you should have used state.
+- **`t-out`, never `t-esc`** — `t-esc` is deprecated and every reviewer flags it.
+- **Conditional classes use the object form** — `t-att-class="{ 'text-danger': hasError }"`, not a ternary that concatenates class strings. A getter returning the object reads even better.
+- **Hide standard elements with `d-none`, never `t-if="False"` or `position="replace"`.** Removing a node another module's xpath depends on breaks that module silently — keep the node in the tree and hide it.
+- **xpath on structure, not text** — `hasclass('foo')` over `@class='foo'` (exact-string match); always set `t-inherit-mode` and keep the expression as short as it can be while staying unambiguous.
+- **No inline `style=`, no `data-*` attributes on OWL templates.** Inline style isn't cached and costs refresh time. A `data-*` attribute almost always means you're about to read it back out of the DOM — which means you should have used state.
 
-### SCSS over style attributes
+### SCSS over inline styles
 
-- **A repeated visual tweak is a class, and probably already a Bootstrap one.** `class="position-absolute bottom-0 opacity-50"` beats a new `.scss` rule beats an inline `style`. Reach for an existing Bootstrap utility first; write SCSS only when none fits; never inline. (And remember Bootstrap's grid isn't loaded in POS — `row`/`col-*` do nothing there.)
+- **A repeated visual tweak is a class — probably already a Bootstrap utility.** Reach for an existing utility first, write SCSS only when none fits, never inline. (Bootstrap's grid isn't loaded in POS — `row`/`col-*` do nothing there.)
 
-### Frontend JS the reviewer won't flag
+### House JS conventions the reviewer enforces
 
-These recur on nearly every PR. They're house conventions, not deep framework knowledge — get them right once and the review moves on to the logic.
+These recur on nearly every PR — house style, not deep framework knowledge. Get them right once and review moves on to the logic: **`const` by default, `let` only when you reassign, never `var`**; **`camelCase`** (PascalCase for classes only, `$`-prefix only for a jQuery object); **ES6 `import { x }`**, never `require` or `odoo.define`; **the semantic array method** (`map`/`filter`/`reduce`/`some`) over a hand-rolled loop, and index a repeated lookup into a `Map` instead of nesting an O(n²) search; **guard clauses** over nested `if`/`else`; **strict `===`**, remembering an empty array is *truthy* (`if (list)` doesn't test emptiness — use `list.length`); **`_t()` on every user-facing string**; **no `debugger`, no stray `console.log`, no dead code**. → `references/js-conventions.md` for the rationale and edge cases.
 
-- [ ]  **`const` by default; `let` only when you reassign; never `var`.** "Mutating an object held in a `const`" is fine — `const` blocks rebinding, not mutation. `var` is a finding every time.
-- [ ]  **`camelCase` for variables and functions.** `PascalCase` is for classes/constructors only; `snake_case` is Python leaking into JS. Prefix a variable with `$` *only* when it holds a jQuery object.
-- [ ]  **ES6 imports — `import { x } from "..."`.** Not `require(...)`, not `odoo.define(...)`. Import OWL hooks from `@odoo/owl` (not `owl.hooks`), `_t` from `@web/core/l10n/translation`, `patch` from `@web/core/utils/patch`.
-- [ ]  **Pick the semantic array method.** `map` to transform, `filter` to select, `reduce` to fold, `some`/`every` for a test, `Map.groupBy`/`Object.groupBy` to bucket — over a hand-rolled `for`/`forEach`+`push`. A repeated lookup inside a loop is an O(n²) trap: index it into a `Map`/object once.
-- [ ]  **Guard clauses over nested `if`/`else`.** Return early for the special cases; keep the happy path un-indented. Reviewers reword deep nesting into guards constantly.
-- [ ]  **`===`/`!==`, and remember an empty array is *truthy* in JS.** `if (list)` does not check emptiness — that Python instinct is a bug here. Use `list.length`. Don't compare arrays/objects with `===` (it's reference identity); compare element-wise or via `Set`.
-- [ ]  **Every user-facing string is wrapped in `_t()`.** Titles, bodies, notifications, action names. An un-wrapped string can't be translated; the reviewer adds `_t` and asks for the `.po` entry.
-- [ ]  **No `debugger`, no stray `console.log`, no dead/commented code.** Leftover `debugger` is the second-most-repeated literal comment in the whole corpus. If you must leave commented code, leave a `// why` next to it.
-- [ ]  **Let the code breathe — group with blank lines.** Separate a function's phases (guards → compute → side-effect → return) with a blank line, and keep statements that belong together touching. A 2–3 line helper stays compact and can sit right next to its siblings; but the longer a method gets, the more it needs the breaks — never drop a 30-line block as one unbroken wall.
+### JS upgrades break silently — read both versions first
+
+- **JS is where upgrades break quietly.** Import paths, registry categories, component names, and bundle names all move between major versions, usually with no error — just a feature that stops working. Before changing any JS file in a migration, read the component in *both* the old and the target source to see how it moved.
+- **`publicWidget` is gone in v19 → `Interaction`.** Every file importing `@web/legacy/js/public/public_widget` migrates to the `Interaction` class: the `events` hash becomes `dynamicContent`/`addListener`, async work moves from `start()` into `willStart()`, and there is no `super` to call.
+- **A core method you wrap may have switched jQuery→native and now *throws*.** v18 `$('sel').append(x)` no-oped on an empty match and searched the whole document; v19 `this.el.querySelector('sel').append(x)` throws on null and only searches the interaction's root. An override that delegates to such a method inherits the throw — guard the container before calling through. Asset/patch order won't fix it.
+- **Deep state mutation may not re-render in OWL 3 (v19).** `this.state.config.key = x` can be missed by the batched scheduler — reassign (`this.state.config = { ...this.state.config, key: x }`) instead.
 
 ## References (consult, don't memorize)
 
-
-| Need...                                                                                             | Read                              |
-| --------------------------------------------------------------------------------------------------- | --------------------------------- |
-| OWL component anatomy — getters vs state,`useRef`/`t-ref`, lifecycle hooks, prop shapes            | `references/owl-components.md`    |
-| The`patch()` rules (prototype/static/props), calling super, services, ORM/RPC, registries           | `references/patching-services.md` |
-| QWeb/OWL template directives, conditional classes, inheritance (`t-inherit`, xpath, `d-none`), SCSS | `references/templates-styling.md` |
-| JS style the reviewer enforces — const/naming/imports, array idioms, guards, async,`_t`            | `references/js-conventions.md`    |
+| Need...                                                                                                                                                    | Read                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| OWL component anatomy — getters vs state, `useRef`/`t-ref`, lifecycle hooks, prop shapes                                                                    | `references/owl-components.md`    |
+| The `patch()` rules (prototype/static/props), calling super, services, ORM/RPC, registries                                                                 | `references/patching-services.md` |
+| QWeb/OWL template directives, conditional classes, inheritance (`t-inherit`, xpath, `d-none`), SCSS                                                         | `references/templates-styling.md` |
+| JS style the reviewer enforces — const/naming/imports, array idioms, guards, async, `_t`                                                                    | `references/js-conventions.md`    |
 
 For where frontend files live and how assets are declared in the manifest, see `odoo-module-development`. For XML *backend* views (not OWL templates), see `odoo-xml-conventions`. For the Python side of a POS data loader or controller, see `odoo-python`.
