@@ -37,8 +37,10 @@ Not `require("web.core")`, not `odoo.define(...)`, not `const { onWillStart } = 
 ```js
 // transform → map
 return res.map((data) => ({ ...data, disabled: data.disabled || check_user }));
-// fold → reduce
-const total = lines.reduce((sum, l) => sum + l.qty, 0);
+// extract THEN fold — map feeds reduce; a reduce callback that also extracts gets "map + reduce"
+const total = lines.map((l) => l.qty).reduce((sum, qty) => sum + qty, 0);
+// flatten nesting → flatMap
+const payments = orders.flatMap((o) => o.payment_ids);
 // test → some / every
 const allValid = entries.every(([, v]) => v <= 1);
 // bucket → Map.groupBy / Object.groupBy
@@ -48,6 +50,7 @@ const filtered = Object.fromEntries(Object.entries(data).filter(([, v]) => v));
 ```
 
 - Don't hand-roll `forEach` + `push` when `map`/`filter`/`reduce` says it directly.
+- Removing records from a live recordlist? Iterate a snapshot — `[...order.payment_ids].forEach((l) => order.removePaymentline(l))` — the live list shrinks mid-iteration and skips elements.
 - A repeated lookup inside a loop is an **O(n²)** trap — index once into a `Map`/object (`Object.fromEntries(rows.map(r => [r.virtual_id, r]))`) then look up in O(1).
 - Membership/dedup → `Set` (`new Set(a).has(x)`), not `array.includes` in a loop.
 
