@@ -11,6 +11,7 @@ You're shipping a module to a customer, not a script to a notebook. Reach for th
 
 ### When to invoke which skill
 
+- **`odoo-grill`** — before you write any code, to pressure-test the plan or design. Interrogates an Odoo plan one question at a time, each with a recommended answer, so the design holds up before module-development starts.
 - **`odoo-module-development`** — before you write a new model, security file, or demo data. Anything that ends up in a `__manifest__.py`. Carries a reference for module structure.
 - **`odoo-migrations`** — when writing an `migrations/` upgrade script, or when a diff changes a field/model on a module already deployed to a customer. Owns the util-first patterns and the "you owe a migration" absence test.
 - **`odoo-python`** — before writing or reviewing any `.py` logic: models, computes, overrides, controllers, wizards. Carries PSAE principles for ORM correctness, performance, style, and references for exact patterns.
