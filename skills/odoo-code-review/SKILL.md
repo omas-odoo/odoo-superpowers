@@ -26,6 +26,21 @@ doesn't match the intent.
 A Pass 1 finding is "this *file* is shaped wrong." A Pass 2 finding is "these files, *together*,
 do the wrong thing." You need both — most of the dangerous bugs only surface in Pass 2.
 
+## Route by file type — load the matching skill
+
+This skill owns the *shape* and the two passes; the domain conventions live in the skill that
+owns the file type. For each changed file, load this skill **plus** the one its path maps to:
+
+| File / path | Also load |
+|---|---|
+| *(every change)* | `odoo-code-review` — this skill: shape + the two passes |
+| `models/`, `controllers/`, `wizard/` `*.py` | `odoo-python` |
+| `__manifest__.py` | `odoo-module-development` |
+| `tests/`, `test_*.py` | `odoo-test-runner` |
+| `migrations/**` `*.py` | `odoo-migrations` |
+| `views/`, `data/`, `report/` `*.xml` & `security/*.csv` | `odoo-xml-conventions` |
+| `static/src/**` (js, xml, scss) | `odoo-js` |
+
 ## Principles
 
 ### Read for the shape, not the syntax
@@ -51,7 +66,7 @@ do the wrong thing." You need both — most of the dangerous bugs only surface i
 
 ### Frontend (OWL / JS)
 
-A diff that touches `static/src` gets the same shape-level scrutiny as Python — invoke the **`odoo-js`** skill for the full set. The shapes that recur most in review:
+A diff that touches `static/src` gets the same shape-level scrutiny as Python — load **`odoo-js`** per the routing table above for the full set. The shapes that recur most in review:
 
 - **Extension that isn't `patch()`.** A reassigned `X.props`, a `Component.extend`, a `MainComponent.components = {...}` — all should be `patch(...)`. And a `patch` that re-implements the whole standard method instead of calling `super` is a time bomb: the customer loses the next Odoo hotfix to that method.
 - **DOM reached imperatively.** `document.getElementById`, `$(...)`, jQuery, `data-*` attributes read back out of the DOM — all mean state/`useRef`/`t-on` should have been used. Async work in `setup()`'s body instead of `onWillStart` is the same smell.
@@ -80,7 +95,7 @@ When the module already exists in a customer DB, a fresh install is irrelevant �
 
 The reviewer's job is to spot the *absence*. A diff that touches any of the above **and** doesn't bump `__manifest__.py` version **and** doesn't add `migrations/<new_version>/` is the bug, full stop. Flag it before approving.
 
-For the actual script conventions (util-first patterns, pre/post/end timing, verification), invoke the **`odoo-migrations`** skill.
+For the actual script conventions (util-first patterns, pre/post/end timing, verification), load **`odoo-migrations`** per the routing table above.
 
 ### Tests
 

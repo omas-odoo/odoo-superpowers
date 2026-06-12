@@ -44,16 +44,21 @@ what a user can now do, and the shape of the solution. This frames every finding
 
 ## 4. Phase A — review file by file (the skill's Pass 1)
 
-For **each changed file**, dispatch a review subagent (run them in parallel — a single
-message with multiple Task tool calls; for a large PR, batch them). Give each agent that
-file's diff and tell it to:
+First, **map each changed file to its domain skill** using the **Route by file type** table in
+the `odoo-code-review` skill (e.g. `models/sale_order.py` → `odoo-python`, `static/src/**` →
+`odoo-js`). That table is the single source of truth — read it, don't restate it here.
 
-1. invoke the `odoo-code-review` skill, then
-2. perform the skill's **Pass 1** on **only that file** — read it for its own shape against
-   the skill's principles (ORM, security, migrations, customer-readiness, tests).
+Then, for **each changed file**, dispatch a review subagent (run them in parallel — a single
+message with multiple Task tool calls; for a large PR, batch them). Give each agent that file's
+diff and, **naming the skills explicitly in its prompt**, tell it to:
+
+1. invoke the `odoo-code-review` skill **and** the domain skill you mapped for this file (e.g.
+   `models/sale_order.py` → `odoo-python`), then
+2. perform the skill's **Pass 1** on **only that file** — read it for its own shape against the
+   skill's principles (ORM, security, migrations, customer-readiness, tests).
 
 The skill owns *what* to look for — don't restate its checklist here; the agents get it by
-invoking the skill. Each agent returns its findings in the **before/after** shape from §6.
+invoking the skills you named. Each agent returns its findings in the **before/after** shape from §6.
 
 ## 5. Phase B — full-logic review (the skill's Pass 2)
 
