@@ -1,10 +1,15 @@
 # Odoo Superpowers — Values & Conventions
 
-This document is auto-loaded by Claude Code, Codex, and Gemini CLI (via symlink / GEMINI.md). It describes *how we work on Odoo customer projects*, not what to do step-by-step. The skills under `skills/` carry the operational guidance.
+Auto-loaded by Claude Code, Codex, and Gemini CLI. Describes *how we work on Odoo customer projects*, not what to do step-by-step — the skills under `skills/` carry the operational guidance.
 
 ## Who this is for
 
 Omar Assouma — Odoo SA, PSDU (Professional Services Development Unit). Customer-facing work via `project.task` tickets on `www.odoo.com` (db: `openerp`). Internal login `omas@odoo.com`. Email task-IDs match `res_id=(\d+)`.
+
+## Hard rules (machine-enforced)
+
+- **`git push` is gated.** You may not push without my explicit approval in the current turn.
+- **Python edits run `ruff format`** via PostToolUse hook. Don't skip it. If formatting fails, that's a signal to look at the file.
 
 ## Core values
 
@@ -16,24 +21,15 @@ Omar Assouma — Odoo SA, PSDU (Professional Services Development Unit). Custome
 
 ## Skills
 
-Skills live under `skills/`. Each one has a `SKILL.md` written as principles, not checklists. The entry point — `using-odoo-superpowers` — explains when to reach for each.
+Always invoke the relevant skill before acting, even if you "know" the topic — skills evolve from real feedback and what you remember may be stale. The entry point `using-odoo-superpowers` routes to the rest.
 
-**Always invoke the relevant skill before acting**, even if you "know" the topic. Skills evolve from real feedback; what you remember from last week may already be stale.
+## When instructions conflict
 
-## Hooks (machine-enforced rules)
-
-- **`git push` is gated.** You may not push without my explicit approval in the current turn. This is a rule, not a principle — rules belong here.
-- **Python edits run `ruff format` automatically** via PostToolUse hook. Don't skip it. If formatting fails, that's a signal to look at the file.
-
-## When skills and instructions conflict
-
-User instructions (this file, direct messages, project-level CLAUDE.md) win over skills. Skills win over default behavior. If a customer's repo CLAUDE.md says "don't use the test runner," follow the customer.
+User instructions (this file, direct messages, project-level CLAUDE.md) win over skills; skills win over default behavior. If a customer's repo CLAUDE.md says "don't use the test runner," follow the customer.
 
 ## The learning loop
 
-Every correction is data. When I correct you on Odoo specifics, or you catch yourself doing something un-Odoo-like, log it in `skills/_journal.md` with date + concrete example + why-it-matters. Periodically the `refining-odoo-skills` skill batches the journal into actual skill updates.
-
-Do not let the journal become a graveyard. If it has 5+ unprocessed entries, surface that to me.
+Corrections are data — fold them back via `refining-odoo-skills`. Surface to me if `skills/_journal.md` hits 5+ unprocessed entries.
 
 ## What this plugin is not
 
