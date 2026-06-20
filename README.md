@@ -1,10 +1,10 @@
 # odoo-superpowers
 
-Odoo SA development skills plugin for PSDU work. Mirrors the [superpowers](https://github.com/obra/superpowers) format so it works across Claude Code, Codex, Gemini CLI, and other agent harnesses.
+**Odoo development skills for AI coding agents.** A [Claude Code](https://claude.com/claude-code) plugin — also Codex and Gemini CLI — that packages Odoo SA / PSDU development know-how as skills. Mirrors the [superpowers](https://github.com/obra/superpowers) format so the same skill files work across Claude Code, Codex, Gemini CLI, and other agent harnesses.
 
 ## What's inside
 
-- **10 skills** (principles, not rules) — entry skill plus module dev, migrations, Python, XML conventions, JS/OWL frontend, code review, test runner, task completion, and a self-refinement loop
+- **11 skills** (principles, not rules) — entry skill plus plan interrogation (`odoo-grill`), module dev, migrations, Python, XML conventions, JS/OWL frontend, code review, test runner, task completion, and a self-refinement loop
 - **Hooks** — block `git push` until you approve, auto-`ruff format` on Python edits, stub for Discord uncertainty capture
 - **`settings/settings.json`** — a permissions template you copy into project `.claude/settings.json` so common read-only commands don't prompt
 - **`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`** — values doc, auto-loaded by each harness
