@@ -67,6 +67,7 @@ A `data-*` attribute on an OWL node is almost always a sign you intend to read i
       <attribute name="t-att-class" add="d-none" separator=" "/>
   </xpath>
   ```
+  A **component** tag (`<MyWidget/>`) can't take `d-none` — the `class` becomes a prop, not a DOM class — so hide it with `t-if` on the existing node (`position="attributes"` adding `t-if`), never `position="replace"`.
 - **`position="replace"` is banned on standard nodes** — target the parent and *add*, or change attributes. (Same rule as backend views.)
 - **xpath on structure, not strings.** Use `hasclass('foo')` rather than `@class='foo'` (exact-match) and avoid predicating on directive text like `@t-if='...'`. Keep the expression as short as stays unambiguous.
 

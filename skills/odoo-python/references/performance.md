@@ -7,19 +7,18 @@ Use when a method touches more than one record or runs in a cron/batch context. 
 The number-one performance finding. Each `search` / `search_read` / `read_group` in a loop is a round-trip to Postgres.
 
 ```python
-# BAD — searching for a record you can just navigate to. N queries.
+# BAD — no relation to navigate, so you search per row. N round-trips.
 for order in orders:
-    partner = self.env["res.partner"].search([("id", "=", order.partner_id.id)])
+    logs = self.env["x.log"].search([("order_ref", "=", order.name)])
 
-# GOOD — navigate the relation. Odoo prefetches partner_id for the whole recordset.
+# GOOD — one search for the whole set, then group in Python.
+logs = self.env["x.log"].search([("order_ref", "in", orders.mapped("name"))])
+logs_by_ref = logs.grouped("order_ref")
 for order in orders:
-    partner = order.partner_id
+    logs = logs_by_ref.get(order.name, self.env["x.log"])
 
-# When you genuinely need records grouped by a key, group ONCE with .grouped()
-# — don't search per item and don't hand-roll a {rec.key: rec} dict.
-lines_by_product = order_lines.grouped("product_id")   # {product: lines_recordset}
-for product, lines in lines_by_product.items():
-    ...
+# When a relation already exists, just navigate it — Odoo prefetches across the recordset
+# (order.partner_id, order.line_ids); never search([("id", "=", ...)]) for those.
 ```
 
 ## Batch creates and writes

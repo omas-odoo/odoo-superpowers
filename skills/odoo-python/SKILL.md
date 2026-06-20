@@ -5,72 +5,41 @@ description: Use when writing or reviewing any Python in an Odoo module — mode
 
 # Odoo Python
 
-Write the Python an experienced PSAE reviewer wouldn't comment on — so the review is about the logic, not the nitpicks. These principles are distilled from real recurring review feedback on PSAE customer code.
+Write the Python an experienced PSAE reviewer wouldn't comment on — so the review is about the logic, not the nitpicks. These are stances to carry, not a checklist to run: the exact signatures live in `references/`, pulled only when you need the fact. When a task skips the planning pass (`odoo-grill`), these reflexes carry the design alone.
 
-## Principles
+## The stances
 
-### ORM correctness — where the real bugs hide
+### Assume it already exists
 
-- **A compute owns exactly one field — its own.** Never write to another field from inside a compute. Cross-writing makes recomputation order a lottery and the value non-deterministic. If field B depends on A, give B its own `@api.depends('A')` compute.
-- **A stored compute is a promise that the value derives only from its declared `@api.depends`.** Reading context, time, `env.user`, or another model's unstored state breaks the promise — the next cron recompute will disagree with what you wrote. Drop `store=True` or drop the runtime input.
-- **`@api.depends` names every real input and nothing else.** A missing dependency means stale data; a dependency on a non-stored field means pointless recomputes. Wrong depends is worse than no compute.
-- **Reach for `related=` before hand-writing a compute** when the value is a plain hop (`partner_id.country_id`). A custom compute for a one-hop value is maintenance you signed up for with no reason.
-- **No `hasattr` in Odoo code.** It almost always hides a missing module dependency or a `super()` mistake (`hasattr(super, ...)` inspects the builtin, not the proxy — it's always False). If you need to know a field exists, depend on the module that defines it.
-- **Don't introspect `_fields` to dodge a dependency.** `partner._fields.get('currency_id')` to avoid depending on the module that adds it is a hack. Add the dependency.
-- **Changing a field is a data event, not just a code edit.** Removing, renaming, retyping, or adding `required=True` to a field on a model that's already deployed will strand or break existing rows on upgrade. The moment you make that edit, invoke the **`odoo-migrations`** skill — the migration ships *with* the field change, not as an afterthought.
+Before hand-rolling anything non-trivial — an action, a record link, a chatter notification, money conversion, date math, a domain — your default is that Odoo already ships it; the burden is on you to prove it doesn't. Hand-rolled code is longer, wrong at the edges (timezones, rounding, same-currency), and rots when the framework moves. Catching yourself assembling an `<a href>`, an `ir.actions.act_window` dict, or a float `==` *is* the signal a helper exists — stop and find it. (Whether a whole *feature* already exists — a setting, an automated action, an app — is grill's question; carry it anyway when no plan ran. Signatures: `references/orm-patterns.md`.)
 
-### Reach for the framework helper before hand-rolling
+### Think in sets, not records — a loop is the smell
 
-Odoo ships helpers for the things you're tempted to write by hand. The helper is shorter, correct, and survives version upgrades — reviewers ask "why not use `<helper>`?" by reflex.
+The ORM is plural: it prefetches, batches, and groups across the whole recordset. The moment you iterate to query, write, or sum, name the set-operation you're dodging — a `search` per row becomes one search with `in` then `.grouped()`; N `create`s become one `create(vals_list)`; a Python sum over `mapped` becomes `_read_group`; an x2many write-loop becomes `Command.set`. Index the fields your domains filter and join on. (`references/performance.md`.)
 
-- **Actions:** `records._get_records_action(...)` — not a hand-built `ir.actions.act_window` dict.
-- **Record links in messages:** `record._get_html_link()` — not hand-assembled `<a href=...>`.
-- **Notifications:** `record.message_post(...)` already notifies tagged partners in the log — don't re-implement it.
-- **Activities:** `record.activity_schedule(...)` — not manually creating `mail.activity` records.
-- **Currency:** `currency._convert(...)` already short-circuits same-currency — don't guard it with an `if`.
-- **Float/money comparison:** `float_compare` / `float_is_zero` — never `==` / `<` on floats; rounding makes them lie.
-- **Set one field with `=`; reserve `.write({...})` for multiple fields.**
+### Stored data is a promise to the future
 
-If you catch yourself writing an `<a href>` string, an action dict, or a float `==`, stop — there's a helper. See `references/orm-patterns.md` for the exact signatures.
+A compute owns exactly one field — its own; writing a second field from inside it makes recompute order a lottery. A *stored* compute promises its value derives only from its declared `@api.depends` — read context, time, `env.user`, or another model's unstored state and the next cron recompute disagrees with what you wrote (drop `store=True`, or drop the runtime input). `@api.depends` names every real input and nothing else: a missing one means stale data, a non-stored one means pointless recomputes. The field's *shape* is the same kind of promise — renaming, retyping, dropping, or newly requiring it has to answer for the rows that already exist, so it travels *with* a migration, not after one (→ `odoo-migrations`). Reach for `related=` before hand-writing a one-hop compute.
 
-### Overrides — survive the framework changing under you
+### Work with the framework's grain, not around it
 
-- **An override that ignores its signature takes `*args, **kwargs`.** When Odoo changes a standard method's signature, your override keeps forwarding correctly instead of silently dropping a new argument.
-- **Guard, then `super()`.** If your override only acts in a special case, `return super()...` first for everything else. An early return beats wrapping the whole method body in an `if`.
-- **Override `create`/`write` only when there's no cleaner hook.** Wanting to read context is not a reason — context already reaches the compute. Reserve CRUD overrides for when you genuinely must intercept persistence.
+When there's no ready-made helper and you're unsure how to build something, the pattern is almost always already in core — find where standard Odoo does this, or something close, and follow it; you inherit its edge cases and its upgrade path for free. The failure mode is reaching *around* the framework instead: `hasattr` or `_fields` introspection to dodge a missing dependency (and `hasattr` on a `super` proxy is *always* False) when you should just depend on the module that defines the field; an override that drops `*args, **kwargs` and so breaks the day core changes the signature; bare imports inside an addon instead of `from odoo.addons.<module>...`. Guard then `super()` rather than wrapping the body in an `if`, and override `create`/`write` only to intercept persistence — never to read context, which already reaches the compute.
 
-### Performance — the loop is the enemy
+### Whose rights is this running as?
 
-- **No query inside a loop.** `search` / `search_read` / `read_group` in a `for` is the single most repeated performance finding. Hoist the query out, fetch once, index the result in Python.
-- **Batch writes and creates.** One `create([vals1, vals2, ...])` beats N creates. Set x2many with `Command.set/link`, never a loop of writes.
-- **Aggregate with `_read_group`, not `search` + Python sum.** The database groups faster than you can, and it doesn't pull every record into memory to do it.
-- **Index what you filter on.** A field that appears in domains, joins, or search defaults wants `index=True`.
+Every `sudo()` and every external entrypoint is a trust boundary — name it before you cross it. To read a protected field (`groups='base.group_system'`), assert the user's right first (`has_group(...)` → `AccessError`), *then* `sudo()`; sudo without the check defeats the point. Webhook and payment controllers verify the signature and are idempotent — guard re-entry (`if tx.state not in ('done', 'cancel', 'error')`) so a replay never double-processes, and never redirect to success when the transaction isn't found.
 
-### Style & hygiene — keep the diff clean
+### Assume multi-company until the task says otherwise
 
-- **DRY the vals dicts.** Repeated `{...}` for move lines or record creation becomes a `_prepare_*_vals` helper. Submodules can then override the helper instead of duplicating your method.
-- **Dead code is a blocker, not a nitpick.** Unused const files, one-line wrappers, `ensure_one()` that guards nothing — delete them. But never break PEP 8 or readability just to save lines.
-- **Error and log messages name the record and the problem.** `"Error"` tells the support tech nothing. `_("Invoice %s has no journal", move.name)` tells them exactly where to look.
-- **Don't mix quote styles in one file.** Pick `"` or `'` and stay consistent — the diff stays clean and the review skips the nitpick.
-- **Let the code breathe — group with blank lines.** Separate a function's phases (guards → compute → side-effect → return) with a blank line, and keep statements that belong together touching. A 2–3 line helper stays compact and can sit right next to its siblings; but the longer a method gets, the more it needs the breaks — never drop a 30-line block as one unbroken wall.
+Code as if more than one company shares the database. A `company_id` field doesn't isolate records — the `ir.rule` does; uniqueness and domains are usually per-company; never hardcode `base.main_company`. (Which dimensions truly apply — multi-currency, multi-warehouse, multi-website — is grill's full pass; carry the company reflex when no plan ran.)
 
-### Security in Python code
+## References (consult for the fact, don't memorize)
 
-- **Protected fields: check access, then `sudo()` to read.** Credential/secret fields carry `groups='base.group_system'`. To read them in logic, first assert the user's right (`has_group(...)` → raise `AccessError`), *then* `company.sudo()._get_credentials()`. Sudo without the access check defeats the point.
-- **Webhook and payment controllers verify authenticity and are idempotent.** Check the HMAC/signature, and guard re-entry: `if tx.state not in ('done', 'cancel', 'error')`. A replayed webhook must never double-process. Don't silently redirect to a success page when the transaction isn't found — log it and show an error.
-- **Imports inside an addon are absolute.** `from odoo.addons.<module>.tools.x import Y`, never bare `from tools.x import Y` — the bare form breaks depending on the working directory.
-
-### Copy-paste vigilance
-
-- **A cloned module is a liability until you've renamed everything.** When you copy a module to start a new one, the method prefixes, comments referencing the old provider, and vestigial files all come with it. Duplicate method names across modules collide. Rename `_aps_` → `_cc_avenue_` everywhere and fix the comments before you write a line of new logic.
-
-## References (consult, don't memorize)
-
-| Need... | Read |
+| Need the exact... | Read |
 |---|---|
-| Exact ORM rules — compute fields, SQL constraints, company rules, Monetary, field prefixing, override snippets | `references/orm-patterns.md` |
-| Performance patterns with code — batching, `_read_group`, indexes, upgrade-script SQL | `references/performance.md` |
-| Calling an external API / device / webhook — Session, auth, pagination, error handling | `references/external-integration.md` |
-| Imports, naming, attribute order, idioms, transactions, translation idiom, PEP8 exceptions | `references/python-conventions.md` |
+| compute / constraint / Monetary / domain / override / company-rule snippet | `references/orm-patterns.md` |
+| batching / `_read_group` / index / upgrade-`util` pattern | `references/performance.md` |
+| external API / device / webhook — session, auth, pagination, errors | `references/external-integration.md` |
+| import order, naming, attribute order, transactions, translation, method shape | `references/python-conventions.md` |
 
-For the stored-compute-is-deterministic principle at review time, see also `odoo-code-review`. For where Python files live in the module, see `odoo-module-development`.
+At review time see also `odoo-code-review`; for where Python files live in the module, `odoo-module-development`.

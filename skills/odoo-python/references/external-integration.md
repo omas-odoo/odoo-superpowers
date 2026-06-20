@@ -64,7 +64,3 @@ except requests.RequestException as e:
 ## No unused parameters
 
 If callers never pass `timeout` and it isn't part of the credentials, don't make it a parameter. A keyword-only API should declare itself keyword-only — or keep the `credentials` dict as one bag instead of splatting it into N params that every call site re-assembles.
-
-## Don't reinvent the stdlib
-
-`itertools.count` for a counter, `len(records)` for a count — use them. A hand-rolled incrementing variable or manual tally is a review comment waiting to happen.

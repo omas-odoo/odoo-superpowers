@@ -5,55 +5,24 @@ description: Use when wrapping up a project.task ticket — after writing the co
 
 # Odoo Task Completion
 
-Done means proven. Tests green, style clean, and you'd be comfortable handing the PR to the customer without a cover note.
+"Done" means proven and customer-ready, not "it runs on my machine." This is an orchestrator: it routes through the review and test gates rather than re-teaching them, then asks the one question only you can answer — would you hand this to the customer without a cover note? Stances, not a checklist.
 
-## Principles
+## The gates
 
-### What "done" means
+### Done is customer-ready, not "it runs"
 
-- **Done is a higher bar than "it works."** It works on your machine; it has to work on the customer's. The difference between the two is exactly the gap this skill closes.
-- **Three gates, in order: review, test, customer-read.** Skipping any of them creates a class of bug the next gate can't catch.
-- **The ticket comment is part of the deliverable.** A `project.task` closed with "fixed" is not closed. It needs to name what changed and why the customer should care.
+It works on your machine; it has to work on the customer's — on a fresh install, after an upgrade, in their language. That gap *is* the job: demo data that demonstrates the feature, a security record for every new model, user-facing strings translated, and a migration travelling with every changed field (→ odoo-migrations). A green test that skips any of these is a higher-confidence wrong answer. (If no plan was pressure-tested up front, this is the last place to catch what grill would have — multi-company, the missing standard setting, the upgrade path; → odoo-grill.)
 
-### The three gates
+### Review and test are gates, not formalities
 
-#### Gate 1: Code review (invoke `odoo-code-review`)
+Two passes you owe before the word "done": read your own diff as if a stranger wrote it (→ odoo-code-review), and prove the behavior on a clean DB — never the dev DB you've polluted all week (→ odoo-test-runner). Order matters: a flaw caught at review never reaches the test run. Don't restate their checks here, invoke them. Most non-trivial tickets need more than one proof layer because `--test-enable` cannot see what the user sees, so pick the layers in odoo-test-runner. If verification fails you're not "almost done" — you're back in implementation.
 
-Read your own diff as if a stranger wrote it. Specifically check:
-- Are there `sudo()` calls without comments?
-- Are there stored computes with runtime dependencies?
-- Is there a security file for every new model?
-- Are user-facing strings wrapped in `_()`?
+### Every change traces to its task id, and "done" carries its evidence
 
-If any answer is "no" or "not sure," fix it before Gate 2.
+A `project.task` closed with "fixed" is not closed: the comment is part of the deliverable, and a non-developer at the customer has to be able to act on it. Saying "done" means linking the ticket, the branch, and the proof — test output, shell session, or screenshot. Without that, "done" is a claim, not a fact.
 
-#### Gate 2: Verification (invoke `odoo-test-runner`)
+### A gate that keeps failing is data, not a personal failing
 
-Prove the feature works on a fresh DB. Not on the dev DB you've been using all week. Not "I'll verify it when I push." Now.
+Stuck on the same gate for a third pass means it found something a skill should have warned you about earlier. Note the concrete case in `skills/_journal.md`; → refining-odoo-skills folds it into a sharper principle or a script fix.
 
-Pick the layer that matches what you built:
-- **Logic / computes / security / migrations** → unit tests (`--test-enable`)
-- **Data shape / domains / new fields** → shell verification (`odoo-bin shell`)
-- **Views / wizards / flows** → UI walkthrough
-
-Most non-trivial tickets need at least two layers. Don't pretend one is enough — `--test-enable` cannot see what the user sees.
-
-If verification fails, you're not in Gate 2 anymore — you're back in implementation.
-
-#### Gate 3: Customer-readiness check
-
-Ask yourself, out loud or in writing:
-- Would the customer understand what changed if they read the field labels?
-- If they install on a fresh DB, does demo data show them the feature works?
-- If they upgrade an existing DB with this module, will the migration run cleanly?
-- Is the ticket comment something a non-developer at the customer can act on?
-
-Any "no" means more work, not a smaller commit.
-
-### When all three gates pass
-
-Then say "done" — and link the ticket, the branch, and the verification evidence (test output, shell session, or screenshot). "Done" without that evidence is a claim, not a fact.
-
-## If a gate keeps failing
-
-If you're stuck on the same gate for a third pass, that's a signal — not a personal failing. Note it in `skills/_journal.md` ("Gate 2 keeps failing because I forget to install dependencies in the tmp DB"). The `refining-odoo-skills` skill will eventually turn that into either a sharper principle in one of the skills, or a script change.
+This skill orchestrates → odoo-code-review then → odoo-test-runner; the customer-readiness stance reaches → odoo-migrations and → odoo-grill.

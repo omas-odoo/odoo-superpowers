@@ -131,9 +131,7 @@ Deliberate exception — external-integration / sync jobs: a long loop talking t
 
 ## Exceptions
 
-Catch specific exceptions, narrow scope. Never bare `except:` or `except Exception:` unless you genuinely want to swallow everything (you don't).
-
-Don't catch **redundant subclasses** (catching `Timeout` and `ConnectionError` next to `RequestException`, which is their parent, is dead code), and don't write several `except` branches that all do the same thing — it just misclassifies errors. An exception log must include the error object: `_logger.warning("X failed: %s", e)`, never `_logger.warning("error")`. For external-call error handling specifically, see `external-integration.md`.
+Catch specific exceptions, narrow scope. Never bare `except:` or `except Exception:` unless you genuinely want to swallow everything (you don't). Don't catch a subclass next to its parent (dead code), don't write several `except` branches that do the same thing, and always log the error object — `_logger.warning("X failed: %s", e)`, never `"error"`. The `requests` exception hierarchy specifically: see `external-integration.md`.
 
 If you need to recover from framework exceptions, use a savepoint:
 
@@ -186,35 +184,9 @@ def action(self):
 
 Trade off against readability — over-extracting hurts too.
 
-## Whitespace & grouping — let the method breathe
+## Whitespace & grouping
 
-PEP 8's "use blank lines in functions, sparingly, to indicate logical sections" is a real rule, not decoration. Separate a method's phases with a single blank line; keep the statements that belong together touching.
-
-```python
-# BAD — one unbroken wall.
-def action_apply(self):
-    self.ensure_one()
-    lines = self.line_ids.filtered(lambda line: line.active)
-    total = sum(lines.mapped('amount'))
-    discount = total * self.rate / 100
-    self.amount = total - discount
-    self.message_post(body=_("Applied %s discount", discount))
-    return True
-
-# GOOD — guard, then compute, then act.
-def action_apply(self):
-    self.ensure_one()
-
-    lines = self.line_ids.filtered(lambda line: line.active)
-    discount = sum(lines.mapped('amount')) * self.rate / 100
-
-    self.amount -= discount
-    self.message_post(body=_("Applied %s discount", discount))
-    return True
-```
-
-- **The longer the method, the more it needs the breaks** — split it into guards / fetch / compute / write / return. If it has more than a couple of those phases it is probably two methods (see *Method shape*).
-- **Group, don't atomise.** One blank line between *logical* groups, not between every statement — a two-line method needs none. A *double* blank line inside a body is `E303`; keep it to one.
+Group a method's phases (guards / fetch / compute / write / return) with single blank lines; a double blank line inside a body is `E303`. The longer the method, the more it needs the breaks — but past two or three phases it's probably two methods (see *Method shape*). `ruff` normalizes the rest.
 
 ## PEP8 exceptions
 
@@ -229,4 +201,3 @@ These are explicitly ignored in Odoo style:
 
 - Readability beats conciseness.
 - Docstrings on methods. Comments on tricky logic.
-- Know your builtins. `if 'key' in d` ≠ `if d.get('key')` — use the right one.

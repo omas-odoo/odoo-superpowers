@@ -1,6 +1,22 @@
 # Migration Patterns Reference
 
-Use when writing the actual code for a migration script. The principles and the "you owe a migration" trigger table live in `SKILL.md`; this is the exact-code lookup. Everything here is `util`-first (Odoo upgrade-util + PSAE practice) — bare `cr.execute` appears only where no helper exists, always guarded.
+Use when writing the actual code for a migration script. The stances (why, when, the absence test) live in `SKILL.md`; this is the exact-code lookup. Everything here is `util`-first (Odoo upgrade-util + PSAE practice) — bare `cr.execute` appears only where no helper exists, always guarded.
+
+## When you owe a migration — what breaks without one
+
+On a module already running at a customer, any of these shapes strands existing data unless a `migrations/<version>/` script handles it:
+
+| Change | What breaks without a migration |
+|---|---|
+| New `required=True` field on an existing model | Existing rows are NULL → upgrade fails on NOT NULL |
+| Field type change | Old values don't match the new type |
+| Renamed field or model | Old column/table orphaned; new one empty |
+| Removed field or model | FK references break, `ir_model_fields` orphans |
+| New `_sql_constraints` / `models.Constraint` (UNIQUE, CHECK) | Existing rows may already violate it |
+| Changed `ondelete` on a Many2one | FK behavior changes under the customer |
+| Edited `noupdate="1"` data | Collides with customer customizations |
+
+A fresh install hits none of these — only an upgrade does. The version bump in `__manifest__.py` is what triggers Odoo to run the matching `migrations/<version>/` directory.
 
 ## Where scripts live
 

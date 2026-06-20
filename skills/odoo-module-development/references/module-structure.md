@@ -2,6 +2,38 @@
 
 Use when creating or restructuring a module's files and directories. The canonical layout (Odoo 19 Coding Guidelines) — match it exactly. Filenames use `[a-z0-9_]` only. Directories `755`, files `644`.
 
+## Manifest (`__manifest__.py`)
+
+The keys a PSDU customer module is expected to carry:
+
+| Key | Convention |
+|---|---|
+| `name` | MMC convention `<Customer> <Project> \| <Domain>`, e.g. `Phoenix Fashion \| Product` |
+| `summary` | one real line of what it does (not a restatement of `name`) |
+| `description` | meaningful; cite the `project.task` id(s) the work traces to |
+| `license` | `OEEL-1` for customer code — **not** `LGPL` |
+| `version` | full `<series>.<x.y.z>`, e.g. `18.0.1.0.0`; bump the last segments when shipping a migration |
+| `depends` | smallest set that works (see the "`depends` is a contract" stance) |
+| `data` | every XML/CSV the module ships, in load order; demo files go in `demo` |
+| `installable` | `True`; `auto_install` only for glue/bridge modules |
+
+```python
+{
+    "name": "Phoenix Fashion | Product",
+    "summary": "Product extensions for the Phoenix Fashion catalogue",
+    "description": "Implements task-2451234: size/colour variants on the website.",
+    "version": "18.0.1.0.0",
+    "license": "OEEL-1",
+    "depends": ["product"],
+    "data": [
+        "security/ir.model.access.csv",
+        "views/product_template_views.xml",
+    ],
+    "demo": ["data/product_demo.xml"],
+    "installable": True,
+}
+```
+
 ## Directory layout
 
 | Dir | Purpose |

@@ -5,54 +5,46 @@ description: Use when designing or writing any Odoo module — new models, inher
 
 # Odoo Module Development
 
-A module should be self-describing — the manifest, models, views, security, and demo data each answer one question about what it does and who can use it.
+A customer-ready module is self-describing: the manifest, models, security, demo data, and translations each answer one question about what it does and who may use it. These are stances to carry, not a checklist to run — the exact layouts, manifest keys, and file names live in `references/module-structure.md`, pulled only when you need the fact. When a task skips the planning pass (`odoo-grill`), these reflexes carry the design alone.
 
-## Principles
+## The stances
 
-### Module shape
+### The manifest is the module's cover letter
 
-- **The manifest is the cover letter.** A reviewer reading only `__manifest__.py` should know what the module does, what it depends on, what it ships, and which Odoo version it targets. If they have to open `models/` to find out, the manifest is failing its job.
-- **One module, one responsibility.** If you're tempted to add a second domain ("project management _and_ invoicing extensions"), that's two modules. Customers pick what they install.
-- **Depends are contracts.** Every entry in `depends` is something you rely on. Adding `account` because you import a constant from it means `account` is now in your upgrade path forever. Depend on the smallest thing that works.
-- **Split by dependency, don't fan out one module's depends.** A single `product_extra` that depends on `sale + stock + pos + purchase` forces a customer who only runs Sales to install all four. Make a base module on `product`, then thin `*_sale`, `*_stock`, `*_pos` modules that each depend on the base plus their one app.
-- **The manifest carries the paperwork.** Beyond purpose and depends: a meaningful `name` following MMC convention (e.g. `Phoenix Fashion | Product`), a real `summary`/`description`, the `project.task` id(s) the work traces to, and `license` `OEEL-1` (not `LGPL`) for customer code.
+A reviewer who reads only `__manifest__.py` should already know what the module does, what it depends on, what it ships, and which Odoo version it targets — if they have to open `models/` to find out, the manifest is failing its one job. It also carries the paperwork that makes the work traceable and shippable to a customer: a `name` following the MMC convention, a real `summary`/`description`, the `project.task` id the work traces to, and a customer license (not `LGPL`). (Exact keys and formats: `references/module-structure.md`.)
 
-### Model design
+### One module, one responsibility — and `depends` is a contract
 
-- **Stored values must be deterministic from stored inputs.** Context, time, and current user are _runtime_ — storage is _forever_. If a compute reads `self.env.context`, it can't be stored without a migration nightmare.
-- **`_inherit` is for extending. `_inherits` is for delegation. `_name` is for new.** Mixing them up creates fields that exist twice and security that applies once.
-- **Field names tell the user, not the developer, what's going on.** `partner_id` not `partner`. `is_active` not `flag`. The user sees this string in tooltips and exports.
-- **Computes that are also stored need `@api.depends`.** If you can't list the dependencies, the field shouldn't be stored.
-- **Decide required-ness deliberately.** Don't leave fields optional by default — ask "should an empty value be possible here?" A transaction with no amount, a terminal with no company: usually those should be `required=True`. Reviewers flag missing required-ness constantly.
-- **Minimize fields — don't store what you can derive.** Two fields where one suffices (a `check_in` and `check_out` boolean instead of one `punch_type`), a stored value you could compute or group on the fly (a `punch_date` when you can group the datetime by date): collapse them. Every stored field is data to migrate and keep consistent.
+Customers install what they pick, so a module that does "project management *and* invoicing extensions" is really two modules wearing one manifest. Every `depends` entry is something you carry on your upgrade path forever — depend on the smallest thing that works, and never pull in `account` just to borrow one constant. The tell that the boundary is wrong: a `product_extra` on `sale + stock + pos + purchase` forces four apps on a customer who runs one. Split it — a base module on the shared dependency, then thin `*_sale` / `*_stock` satellites that each add their single app.
 
-### Views
+### Security is a deliverable, not an afterthought
 
-- **Views describe data, not behavior.** Buttons trigger methods on the model; the view doesn't own the logic. If a view has `<field>` with a long `attrs=` block branching three ways, the model needs a computed field.
+Every model owns its access — an `ir.model.access.csv` line even for the model that's "only used internally," because "internal" is exactly the assumption that leaks data. Who-may-see-which-row is the record rule's job (`ir.rule`), never a Python `if`: ad-hoc checks silently skip `search`, `read_group`, and report exports (→ `odoo-code-review`). And every `sudo()` is a trust boundary you justify in a comment — assert the right, *then* sudo (→ `odoo-python`).
 
-For XML naming, formatting, and inheritance details, invoke the **`odoo-xml-conventions`** skill — it owns those rules.
+### `_inherit` over redefining — the framework is the extension API
 
-### Security
+Extending an existing model is `_inherit`; delegating to a parent record is `_inherits`; only a genuinely new thing earns a bare `_name`. Confuse them and you get fields that exist twice with security that applies once. The reflex underneath: the framework *is* the extension API — inherit the model, xpath the view, extend the method, rather than redefining or monkey-patching, so you keep core's edge cases and its upgrade path instead of forking them. (Override discipline on the Python side → `odoo-python`.)
 
-- **Every model needs an `ir.model.access.csv` line, even internal ones.** "It's only used internally" is how data leaks happen.
-- **Every `sudo()` answers a question.** Why does this bypass access rules? Write the answer in a comment on the same line. If you can't justify it, you don't need it.
-- **Record rules go in `ir.rule`, not in Python `if`-statements.** The ORM enforces them; ad-hoc checks miss `search()`, `read_group()`, and report exports.
+### Store only what you must, and make each field a deliberate choice
 
-### Migrations & customer-readiness
+Every stored field is data you migrate and keep consistent forever, so don't store what you can derive — a `check_in`/`check_out` boolean pair where one `punch_type` would do, a stored `punch_date` you could get by grouping the datetime. Stored values must be deterministic from their stored inputs (→ `odoo-python` owns this). For the fields that earn their place, decide required-ness instead of defaulting to optional: ask whether an empty value is genuinely meaningful — a transaction with no amount, a terminal with no company usually shouldn't be possible.
 
-- **If a change would strand existing data on upgrade, you owe a migration** — invoke the **`odoo-migrations`** skill, which owns the when/how (util-first, pre/post/end, verification).
-- **Demo data is part of the module.** A customer who installs your module should see something useful without typing.
-- **Translations are not optional.** All user-facing strings go through `_()`. Customer-facing modules ship `.po` files for the customer's locale.
+### Field and view design is a user-facing decision
 
-## References (consult, don't memorize)
+Field names are read by users in tooltips and exports, not just by you — `partner_id` not `partner`, `is_active` not `flag`. And views describe data, not behavior: a `<field>` carrying a three-way `invisible`/`attrs` branch is logic that belongs in a computed field on the model, where it's testable and reusable. (XML naming, formatting, and inheritance → `odoo-xml-conventions`.)
 
-The principles above tell you *how to think*. The references below hold the *exact conventions* — file layouts, method-name patterns, import order, idiomatic snippets. Read them when you need the fact, not the judgment.
+### Demo data and translations are part of "done"
+
+A module isn't done when it works — it's done when a customer installs it on a fresh DB and sees the feature work without typing anything. Demo data is what demonstrates it; every user-facing string goes through `_()`, and a customer module ships the `.po` for their locale. And if a change would strand existing rows on upgrade, you owe a migration before it ships, not after (→ `odoo-migrations` owns the when and how).
+
+## References (consult for the fact, don't memorize)
 
 | Need... | Read |
 |---|---|
-| Where does this file go? What do I name it? | `references/module-structure.md` |
-| A change needs a data migration on a deployed module | invoke the **`odoo-migrations`** skill |
-| How to write the Python inside models/ — ORM, computes, performance, style | invoke the **`odoo-python`** skill |
-| XML record id, view inheritance, menu/action naming | invoke the **`odoo-xml-conventions`** skill |
+| where a file goes, what to name it, manifest keys / license / MMC name | `references/module-structure.md` |
+| a change that would strand data on a deployed module | invoke `odoo-migrations` |
+| the Python inside `models/` — ORM, computes, performance, security | invoke `odoo-python` |
+| XML record ids, view inheritance, menu / action naming | invoke `odoo-xml-conventions` |
+| reviewing the result before you call it done | invoke `odoo-code-review` |
 
-If a reference doesn't match what you're seeing in PSDU code (customer legacy, project-specific exception), follow the existing code in that file and log the case in `skills/_journal.md`.
+If a reference contradicts existing PSDU code (customer legacy, project exception), follow the existing file and log the case in `skills/_journal.md`.

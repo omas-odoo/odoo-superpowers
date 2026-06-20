@@ -32,6 +32,8 @@ import { onWillStart, useState, useRef } from "@odoo/owl";
 
 Not `require("web.core")`, not `odoo.define(...)`, not `const { onWillStart } = owl`. Import OWL hooks from `@odoo/owl`.
 
+A file under `static/src` is treated as an ES module by the asset system. On versions/bundles that still need it, an `/** @odoo-module **/` header at the top of the file is what opts it in (and `/** @odoo-module alias=... **/` keeps a legacy import name working during a migration).
+
 ## Pick the semantic array method
 
 ```js

@@ -105,7 +105,31 @@ setup() {
 }
 ```
 
-Acquire each service once in `setup`; don't sprinkle `this.env.services.x` through the methods. When a dedicated hook exists (`usePos`), use it.
+Acquire each service once in `setup`; don't sprinkle `this.env.services.x` through the methods. When a dedicated hook exists (`usePos`), use it. Check what the core component's `setup` already assigns before re-acquiring — `TicketScreen` already exposes `this.dialog`, so a second `useService("dialog")` in your patch is dead code.
+
+### Services never travel as arguments — they go where they're used
+
+A method that needs a service belongs on the layer that already has it, not on a data record that gets the service handed in. Passing `orm`/`pos`/`env.utils` into a record method just relocates the layering mistake.
+
+```js
+// BAD — logic on the PosOrder record, services smuggled in as arguments.
+class PosOrder {
+    applySettlement({ orm, pos, notification }) {
+        // ...needs orm, pos, notification — none of which a record should hold.
+    }
+}
+order.applySettlement({ orm: this.orm, pos: this.pos, notification: this.notification });
+
+// GOOD — shared service-needing logic lives on the store, which already has them.
+patch(PosStore.prototype, {
+    async applySettlement(order) {
+        const data = await this.data.call(...);   // this.data, this.models, this.env are here
+        order.setSettlement(data);                 // record keeps the pure mutation
+    },
+});
+```
+
+Records keep pure data mutations; the store holds business logic that needs services (this is how core `pos_loyalty` does it); the component is a thin orchestrator that passes plain data. The same logic on a record drawing service deps is the smell, whether the deps are arguments or reached through `this`.
 
 ## ORM vs RPC
 

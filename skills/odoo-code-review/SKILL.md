@@ -5,35 +5,14 @@ description: Use when reviewing Odoo code — yours before commit, Claude's afte
 
 # Odoo Code Review
 
-Review Odoo code the way an experienced PSDU dev would — for *shape*, not for lint. Lint catches typos; review catches assumptions.
-
-## How to review: two passes
-
-Review in two passes, in order — don't mix them.
-
-**Pass 1 — file by file, for shape.** Take each changed file on its own and read it for its
-own shape: does this model / view / controller / data file read like Odoo wrote it? Apply the
-principles below (ORM, security, migrations, customer-readiness, tests) to *that one file*.
-You're not yet asking whether the feature is correct — only whether each file is well-formed Odoo.
-
-**Pass 2 — the whole change, after you understand the logic.** Only once you've read every
-file, step back and review the change as one system. Trace the primary user action end to end
-across the files — from the view or route, through the model and access checks, into the DB.
-This is the pass that catches what no single file can show: user input meeting `sudo`, limits
-or columns that disagree between two files, the same job done two ways, and behavior that
-doesn't match the intent.
-
-A Pass 1 finding is "this *file* is shaped wrong." A Pass 2 finding is "these files, *together*,
-do the wrong thing." You need both — most of the dangerous bugs only surface in Pass 2.
+Review for *shape*, not for lint — lint catches typos, review catches assumptions. These are review stances to carry, not a checklist to run. The file-type conventions live in the skill that owns the file (table below); this skill owns the review act itself — how to read a diff, what only a human-style read catches, and the customer bar.
 
 ## Route by file type — load the matching skill
 
-This skill owns the *shape* and the two passes; the domain conventions live in the skill that
-owns the file type. For each changed file, load this skill **plus** the one its path maps to:
+For each changed file, load this skill **plus** the one its path maps to. The right-hand skill carries the shapes; this skill carries how to look.
 
 | File / path | Also load |
 |---|---|
-| *(every change)* | `odoo-code-review` — this skill: shape + the two passes |
 | `models/`, `controllers/`, `wizard/` `*.py` | `odoo-python` |
 | `__manifest__.py` | `odoo-module-development` |
 | `tests/`, `test_*.py` | `odoo-test-runner` |
@@ -41,67 +20,34 @@ owns the file type. For each changed file, load this skill **plus** the one its 
 | `views/`, `data/`, `report/` `*.xml` & `security/*.csv` | `odoo-xml-conventions` |
 | `static/src/**` (js, xml, scss) | `odoo-js` |
 
-## Principles
+## Reading a diff
 
-### Read for the shape, not the syntax
+### Read it twice — each file alone, then the change as a system
 
-- **Code should read like Odoo wrote it.** If a reviewer has to ask "why this way?", the code is doing too much explaining. Match the framework's idioms before optimizing.
-- **Look at what's *missing*, not just what's there.** No security file? No demo data? No migration for the new required field? Those are the bugs. Lint can't find absent code.
-- **Trace one user action end-to-end.** Pick a button or a form save. Follow it from the view, through the model, through access checks, into the DB. If you can't follow it cleanly, the customer's bug report won't be reproducible either.
+Pass one takes each changed file on its own terms: does this model / view / template read like Odoo wrote it? You're judging well-formedness, not correctness. Pass two — only once every file is read — traces one real user action end to end, from the view or route through the access checks into the DB. The two passes find different bugs and must not be mixed: a file can be flawless Odoo and still be wrong in concert with another — user input meeting a `sudo`, a `limit` that disagrees with a column, the same job done two ways. The dangerous bugs almost all live in pass two; budget for it.
 
-### ORM correctness
+### The bug is usually the code that isn't there
 
-- **Stored computes depending on context, time, or `env.user` are bombs.** They give one value when written and a different one when re-computed. Either drop the `store=True` or drop the runtime dependency.
-- **`search(... limit=1)` is fine; `search(...)[0]` is a `KeyError` waiting for the day the search returns nothing.**
-- **Recordsets are not lists.** `for rec in records: rec.field = x` is N writes. `records.write({'field': x})` is one.
-- **`self.ensure_one()` is for genuinely single-record methods — not a reflex.** If the operation could run over a recordset, batch it instead of forcing one-at-a-time. When you see `ensure_one()` on logic that isn't truly atomic-per-record, ask why it isn't batched.
+Lint can only read what the diff contains; a reviewer reads what the diff *should* contain and doesn't. A new model with no `ir.model.access` line, a feature with no demo data, a new `required` field with no migration, a schema change with no `__manifest__.py` version bump — none of these surface as a red line, so you go looking for the gap. The migration absence test is the sharpest form: a diff that changes a field/model shape, doesn't bump the version, and doesn't add `migrations/<version>/` is the bug — flag it before approving (→ `odoo-migrations` for which shapes owe a script). When no plan ran, carry grill's two questions yourself: does this hold under multi-company, and what happens on the customer's *upgrade*? (→ `odoo-grill`).
 
-### Security
+### Name the shape, not the fix
 
-- **Every `sudo()` answers a question** — same principle as in module-development. In review, if the answer isn't in a comment, request one.
-- **`if self.env.user.has_group(...)`-style checks in business logic are a smell.** The right place is `ir.rule` or `ir.model.access`. Python checks miss aggregations and reports.
-- **Look at the access CSV.** Read permissions for `base.group_public` on anything non-public is a finding. Even read.
-- **A model method that doesn't use `self` and does external I/O is RPC-attackable.** Every public model method is reachable via RPC and server actions. Self-less external-call logic belongs in a module-level `utils.py`. Flag it when you see it on a model.
-- **Secret/credential fields need `groups='base.group_system'`, and reads need access-check-then-`sudo()`.** A `.sudo()` read of a protected field with no preceding `has_group` check defeats the protection.
+"Change this line" fixes one PR; "this is a stored compute that depends on runtime context" teaches the pattern, so the next PR doesn't reintroduce it. A review only compounds when the finding generalizes beyond the instance — so state the category, point at the owning skill, and let the author internalize the rule rather than just the patch.
 
-### Frontend (OWL / JS)
+## What only this read catches
 
-A diff that touches `static/src` gets the same shape-level scrutiny as Python — load **`odoo-js`** per the routing table above for the full set. The shapes that recur most in review:
+### Style the linter is blind to
 
-- **Extension that isn't `patch()`.** A reassigned `X.props`, a `Component.extend`, a `MainComponent.components = {...}` — all should be `patch(...)`. And a `patch` that re-implements the whole standard method instead of calling `super` is a time bomb: the customer loses the next Odoo hotfix to that method.
-- **DOM reached imperatively.** `document.getElementById`, `$(...)`, jQuery, `data-*` attributes read back out of the DOM — all mean state/`useRef`/`t-on` should have been used. Async work in `setup()`'s body instead of `onWillStart` is the same smell.
-- **A derived value that isn't a getter**, and a complex `t-if`/`t-att-class` inlined in the template instead of a getter the template reads.
-- **`t-esc` (deprecated), inline `style=`, or hiding a standard node with `position="replace"`/`t-if="False"`** instead of `t-out`, SCSS/Bootstrap classes, and `d-none`. The last one silently breaks other modules' xpaths.
-- **An un-`_t()`'d user-facing string, a leftover `debugger`/`console.log`, or `var`.** The first blocks translation; the others are pure noise the review shouldn't have to carry.
+Three shapes recur and none trip a linter. **Repeated `vals` dicts built inline** should be a `_prepare_<x>_vals` method — a customer submodule extends behavior by overriding a method, never by patching a literal buried in a loop, so the missing seam is a real defect, not taste. **Dead code is a blocker, not a nitpick** — an unused file, a one-line wrapper that only calls `super`, an `ensure_one()` that guards nothing: each is a maintenance tax and a lie about intent, and the customer inherits both. **Every error and log message names the record and the problem** — `raise UserError("Error")` or a bare `"Invalid"` is unactionable in a customer's log at 2am; the message has to say which record and what's wrong with it.
 
-### Customer-readiness
+### Shapes that should trigger a deeper read
 
-- **The PR isn't done until you'd be comfortable handing it to the customer without a cover note.** Customer-facing means: clear field labels, translated strings, demo data that demonstrates the feature, a migration that won't blow up their DB.
-- **Look at the diff against an `-i` install on a fresh DB.** If the module can't install cleanly on a clean DB, customers can't install it either.
+When one of these appears, that's the signal to pull the owning skill and read harder — don't wave it through:
 
-### Migration triggers — the absence test
+- `.py`: a loop that writes or queries, `search(...)[0]`, a stored compute reading `context`/time/`env.user`, a `.sudo()` with no preceding `has_group`, a `has_group` check doing work `ir.rule` should own, a self-less method doing external I/O on a model → `odoo-python`.
+- `static/src`: a reassignment that should be `patch()`, the DOM reached imperatively, an un-`_t()`'d user-facing string → `odoo-js`.
+- `tests/`: a test run on a polluted DB (false confidence), or named for a method instead of a behavior → `odoo-test-runner`.
 
-When the module already exists in a customer DB, a fresh install is irrelevant — what matters is what happens on **upgrade**. Scan the diff for these shapes; each one requires a `migrations/<version>/` script:
+### The customer-readiness bar
 
-| Diff shape | Migration required because... |
-|---|---|
-| New `required=True` field on an existing model | Existing rows are NULL; upgrade fails on NOT NULL |
-| Field type change | Old values may not match the new type |
-| Renamed field or model | Old column/table still in DB; data orphaned |
-| Removed field or model | FK references break silently |
-| New `_sql_constraints` (UNIQUE, CHECK) | Existing rows may already violate it |
-| Changed `ondelete` semantics on a Many2one | Customer's FK behavior changes under them |
-| Edits to `noupdate="1"` XML records | Customer's customizations may collide |
-
-The reviewer's job is to spot the *absence*. A diff that touches any of the above **and** doesn't bump `__manifest__.py` version **and** doesn't add `migrations/<new_version>/` is the bug, full stop. Flag it before approving.
-
-For the actual script conventions (util-first patterns, pre/post/end timing, verification), load **`odoo-migrations`** per the routing table above.
-
-### Tests
-
-- **A test that runs on a polluted DB is worse than no test** — it gives false confidence. Demand the test-runner skill was used.
-- **Tests should describe behavior, not implementation.** `test_user_can_see_own_tickets` is a test. `test_compute_method` is not.
-
-## When you find something
-
-Don't just say "this is wrong." Name the *shape* — "stored compute depending on runtime context" — so the author learns the pattern, not just the fix. That's what makes review compound across reviews.
+Done is not "it works" — it's "I'd hand this to the customer with no cover note." That means clear field labels, translated strings, demo data that actually demonstrates the feature, and a clean `-i` install on a fresh DB: if it can't install on your throwaway DB, it can't install on theirs. (Full wrap-up sequence: → `odoo-task-completion`.)

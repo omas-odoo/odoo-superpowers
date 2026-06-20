@@ -5,79 +5,53 @@ description: Use when verifying an Odoo development before claiming "it works," 
 
 # Odoo Test Runner
 
-Testing is verification. The goal isn't to run `--test-enable` and check a box — it's to prove the development does what the ticket asked, on a DB that looks like a customer's. Two halves: **run** what you wrote on a clean install, and **write** tests an experienced reviewer wouldn't rework.
+A green test on the dev DB you've run all week is a lie — it passed against records, half-applied columns, and hand-fixed data the customer's DB won't have. A throwaway DB, installed clean and dropped after, is the only signal you can believe that the development does what the ticket asked. These are stances to carry, not a checklist to run: the exact `odoo-bin` invocations and test-class patterns live in `references/`. When a task skips planning (`odoo-grill`), these reflexes carry verification alone.
 
-## Running — prove it on a fresh DB
+## Running — make the run credible
 
-### Testing means proving the feature works
+### Fresh DB, or don't trust the green
 
-- The loop is: **build → install on a fresh DB → verify the behavior → drop the DB.**
-- "Works on my machine" doesn't count unless your machine is a fresh DB with the module installed cleanly. The dev DB you've been using all week has state the customer's DB won't.
-- The acceptance criteria come from the ticket. If you can't restate them in one sentence before you start verifying, you don't yet know what you're proving.
+Pollution looks like correctness: a leftover record from yesterday makes today's search return `1` instead of `0`, and the check passes for the wrong reason. A pass on your long-lived dev DB therefore proves nothing about a clean install. The only run you can believe is a throwaway DB carrying just your module's dependencies, built fresh and dropped after — *even when the run failed*, because the DB you keep "for inspection" is the next run's pollution. After a fix, re-run on a fresh DB: the fix itself may lean on dev-DB state the customer won't have. One binary owns the whole loop (`odoo-bin db init`/`drop`) because dropping the DB takes its filestore with it — raw `dropdb` orphans the filestore and re-pollutes. (Invocation, flags, `~/.odoorc` → `references/odoo-bin-commands.md`.)
 
-### A fresh DB every time, dropped after
+### Prove the ticket, not the checkbox
 
-- **Pollution looks like correctness.** A leftover record from yesterday's test makes today's search return `1` instead of `0`, and the verification passes for the wrong reason.
-- **Customer DBs are fresh relative to your module.** The closest local equivalent is a throwaway DB with only your dependencies installed — name it `tmp_test_<module>_*` so orphan cleanups stay trivial.
-- **Drop after, always** — even if the run failed. Keeping the DB "for inspection" creates the next pollution. Chain the drop with `;` (not `&&`) so it runs regardless; for shell/UI runs the DB has to outlive the install, so drop it by hand.
+`--test-enable` going green proves the code runs without crashing — not that it does what was asked. Before verifying, restate the acceptance criteria in one sentence; if you can't, you don't yet know what you're proving. "Verified" means every claim in the ticket has a concrete artifact behind it — a passing test, a shell output, or a screenshot — and the suite is green on a fresh DB. Anything less is "it didn't crash."
 
-### Three layers — match to the risk
+### The new behavior earns a new test
 
-Unit tests (`--test-enable`) for logic that breaks unnoticed — computes, constraints, security, migrations, anything with branches. Shell (`odoo-bin shell`) for ORM data-shape questions — did the field compute right, does this domain return those records — faster than clicking. UI (`:8069`) for what the customer actually clicks — views, wizards, reports, screenshots. Not exclusive: a new field with a compute and a form view wants all three; a pure migration wants only the unit test.
+A suite that still passes after your change proves you didn't break the *old* behavior — not that you delivered the new one. The bug you fixed earns a test that fails before the fix and passes after; the feature you built earns a test asserting its new contract. Leaning on an existing test that happens to still pass is how a feature ships untested. A surprise found while poking in the shell or UI earns a unit test *before* you fix it — that's the move that turns a one-off into a regression that can never return.
 
-### `odoo-bin` owns the whole loop — never `createdb`/`dropdb`
+### Match the layer to the risk
 
-`odoo-bin db init` / `db drop` handle the **filestore** alongside the DB; raw `createdb`/`dropdb` leave orphan filestore dirs that pollute the next run. One binary creates, installs, verifies, and drops — no shell wrappers, no bespoke scripts. Connection settings (`db_user`, `addons_path`, …) live in `~/.odoorc`, so a command passes only what differs per-run. Exact commands, flags, the `--test-tags` filter syntax, and the one-shot invocation → `references/odoo-bin-commands.md`.
+Unit (`--test-enable`) for logic that breaks unnoticed — computes, constraints, security, migrations, anything with branches. Shell (`odoo-bin shell`) for data-shape questions — did the field compute, does this domain return those records — faster than clicking. UI (`:8069`) for what the customer actually clicks — views, wizards, reports. Not exclusive: a new computed field on a form wants all three; a pure migration wants only the unit test.
 
-### When verification fails
+### Isolate the module under test
 
-- **Read the first failure, not the last.** Test failures cascade; the first trace is the cause, the rest are noise.
-- **Don't loosen the test.** Matching the assertion to the buggy output is worse than the original bug.
-- **Re-run on a fresh DB after fixing** — your fix might lean on dev-DB state the customer won't have.
-- **A surprise from shell/UI verification earns a unit test before the fix** — that's how a regression becomes impossible.
-- "Verified" means every claim in the ticket has a concrete check behind it — a test, a shell output, or a screenshot — and the suite passes on a fresh DB.
+Install only your module and its dependencies, never `-i all` — a failure then traces to your code, not a neighbor's. Name the DB `tmp_test_<module>_*` so orphan cleanups stay trivial, and tag your suite so `--test-tags` runs just it instead of letting a hundred unrelated tests drown your signal.
 
-## Writing tests
+### When it fails, fix the code — not the test
 
-### Pick the lightest class that does the job
+Failures cascade, so read the *first* trace; the rest are noise. Never relax the assertion to match the buggy output — a test bent to accept the bug is worse than the bug, because it now hides every future one too. (For the debugging discipline itself, lean on `systematic-debugging`.)
 
-- **`TransactionCase` is the default** — one transaction per test, rolled back; `setUpClass` fixtures persist across the class and roll back at the end. Step up to **`HttpCase`** only when you need the HTTP layer — controllers, sessions, tours.
-- **`SavepointCase` is gone** — `TransactionCase` absorbed it. Don't reach for it in v16+; the shared-fixture behaviour is already built in.
+## Writing — tests that run and mean something
 
-### Tag every test, and tag it `post_install`
+### Pick the lightest class — and let it roll back
 
-- **`@tagged("post_install", "-at_install")`** on custom tests — run once, after all modules install, not twice. A `-at_install` with no `post_install` never runs at all.
-- Add a module tag (e.g. `"psae_my_module"`) so `--test-tags` can target just your suite.
+`TransactionCase` is the default: one transaction per test, rolled back, so every test starts from the same clean state — that roll-back is the fresh-DB discipline enforced *inside* the suite, and a stray `commit()` breaks it. Step up to `HttpCase` only for the HTTP layer — controllers, sessions, tours. `SavepointCase` is gone (merged into `TransactionCase`, v16+) — don't import it.
 
-### `setUpClass` for fixtures, `setUp` for mutable state
+### A test that never runs is a green lie
 
-Expensive shared fixtures go in `setUpClass` (built once); per-test state a test might mutate goes in `setUp` (rebuilt each test). Always `super()` first.
+Several silent no-ops pass while testing nothing: `@tagged("-at_install")` with no `post_install` never executes; a new test file not imported in `tests/__init__.py` leaves the runner discovering nothing and "passing" empty; and a tour logging in as `admin`/`demo`/`portal` silently fails to authenticate, because a demo user's login is *not* their password and a fresh DB leaves it empty — set the passwords first. Each looks green; none proves anything. (Class table, `@tagged`, the `tests/__init__.py` rule, the full Python+JS+manifest tour wiring, and the password SQL → `references/writing-tests.md`.)
 
-### Assert record values, and the *specific* exception
+### Assert what won't drift, and the *specific* failure
 
-- **`assertRecordValues` over chained `assertEqual`** — one call asserts every field and gives a readable diff on failure. Field-by-field is fine for one or two.
-- **Assert on stable record values, not UI labels** — labels are translatable and drift.
-- **`assertRaises(UserError)` / `assertRaisesRegex`, never `assertRaises(Exception)`** — the broad catch accepts too much and masks the next bug.
-
-### Test discovery is manual — `tests/__init__.py`
-
-`tests/` needs its own `__init__.py` importing every test file, one per line, alphabetically — without it the runner finds nothing and the suite silently passes empty. The module-root `__init__.py` never imports `tests`; Odoo discovers them itself.
-
-### Tours drive the UI from an `HttpCase`
-
-A tour is three coupled pieces: a Python `HttpCase.start_tour(...)` entry, a JS tour registered in `web_tour.tours`, and the JS file declared in the **`web.assets_tests`** bundle (test-only, not production). A tour always needs `HttpCase` — never `TransactionCase`. The JS side follows `odoo-js` conventions.
-
-### The demo-user password trap
-
-Demo users' **login is not their password.** `start_tour(..., login="admin")` authenticates with the password *equal to the login*, but on a fresh/dev DB `admin`/`demo`/`portal` often have an empty password — so the tour silently fails to authenticate. Set the passwords before any test run that logs in as them.
-
-Exact `@tagged` syntax, the `setUpClass`/`assertRecordValues`/`assertRaises` snippets, the full Python+JS+manifest tour example, the password SQL, and the pitfall list → `references/writing-tests.md`.
+Assert stable record values (`assertRecordValues` for many fields at once), never UI labels — labels are translatable and move under you. Assert the *specific* exception (`assertRaises(UserError)`), never `Exception` — the broad catch passes on the next, unrelated bug too.
 
 ## References (consult, don't memorize)
 
-| Need...                                                                                                                                                  | Read                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `odoo-bin` commands and flags — `db init`/`drop`/`duplicate`, `-i`/`-u`, `--test-enable`, `--test-tags` syntax, `shell`, the UI server, `--dev`, the one-shot loop | `references/odoo-bin-commands.md` |
-| Writing the tests themselves — class choice, `@tagged`, `setUp`/`setUpClass`, `assertRecordValues`, `assertRaises`, `tests/__init__.py`, tours, demo passwords      | `references/writing-tests.md`     |
+| Need the exact... | Read |
+|---|---|
+| `odoo-bin` command or flag — `db init`/`drop`/`duplicate`, `-i`/`-u`, `--test-enable`, `--test-tags` syntax, `shell`, the UI server, `--dev`, the one-shot loop | `references/odoo-bin-commands.md` |
+| test-writing pattern — class table, `@tagged`, `setUp`/`setUpClass`, `assertRecordValues`, `assertRaises`, `tests/__init__.py`, tours, demo passwords | `references/writing-tests.md` |
 
 For the JS half of a tour (registering the tour, step `trigger`/`run` shapes), see `odoo-js`. For wrapping up the whole ticket — review + test + customer-readiness — see `odoo-task-completion`; for the review pass itself, `odoo-code-review`.
