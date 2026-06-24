@@ -15,7 +15,7 @@ Before hand-rolling anything non-trivial — an action, a record link, a chatter
 
 ### Think in sets, not records — a loop is the smell
 
-The ORM is plural: it prefetches, batches, and groups across the whole recordset. The moment you iterate to query, write, or sum, name the set-operation you're dodging — a `search` per row becomes one search with `in` then `.grouped()`; N `create`s become one `create(vals_list)`; a Python sum over `mapped` becomes `_read_group`; an x2many write-loop becomes `Command.set`. Index the fields your domains filter and join on. (`references/performance.md`.)
+The ORM is plural: it prefetches, batches, and groups across the whole recordset. The moment you iterate to query, write, or sum, name the set-operation you're dodging — a `search` per row becomes one search with `in` then `.grouped()`; N `create`s become one `create(vals_list)`; a Python sum over `mapped` becomes `_read_group`; an x2many write-loop becomes `Command.set`; an `if cond: continue` straight after a `search` is a domain leak — push the condition into the domain. Burying the loop in a private helper doesn't pay the debt: the smell is the per-row op, not where it's written. And work that doesn't vary per row — a `ref` lookup, a parse, an assignment identical in every branch — is hoisted above the loop and computed once. Index the fields your domains filter and join on. (`references/performance.md`.)
 
 ### Stored data is a promise to the future
 
@@ -27,7 +27,7 @@ When there's no ready-made helper and you're unsure how to build something, the 
 
 ### Whose rights is this running as?
 
-Every `sudo()` and every external entrypoint is a trust boundary — name it before you cross it. To read a protected field (`groups='base.group_system'`), assert the user's right first (`has_group(...)` → `AccessError`), *then* `sudo()`; sudo without the check defeats the point. Webhook and payment controllers verify the signature and are idempotent — guard re-entry (`if tx.state not in ('done', 'cancel', 'error')`) so a replay never double-processes, and never redirect to success when the transaction isn't found.
+Every `sudo()` and every external entrypoint is a trust boundary — name it before you cross it. To read a protected field (`groups='base.group_system'`), assert the user's right first (`has_group(...)` → `AccessError`), *then* `sudo()`; sudo without the check defeats the point. Webhook and payment controllers verify the signature and are idempotent — guard re-entry (`if tx.state not in ('done', 'cancel', 'error')`) so a replay never double-processes, and never redirect to success when the transaction isn't found. A cron entrypoint is the same boundary from the other side: name it `_cron_*` and keep it private (every public model method is RPC-callable), and make it idempotent — it *will* re-fire, so a second run the same day must not double-post; exclude the already-done in the search domain or flag them.
 
 ### Assume multi-company until the task says otherwise
 

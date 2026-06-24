@@ -11,7 +11,7 @@ A customer-ready module is self-describing: the manifest, models, security, demo
 
 ### The manifest is the module's cover letter
 
-A reviewer who reads only `__manifest__.py` should already know what the module does, what it depends on, what it ships, and which Odoo version it targets — if they have to open `models/` to find out, the manifest is failing its one job. It also carries the paperwork that makes the work traceable and shippable to a customer: a `name` following the MMC convention, a real `summary`/`description`, the `project.task` id the work traces to, and a customer license (not `LGPL`). (Exact keys and formats: `references/module-structure.md`.)
+A reviewer who reads only `__manifest__.py` should already know what the module does, what it depends on, what it ships, and which Odoo version it targets — if they have to open `models/` to find out, the manifest is failing its one job. It also carries the paperwork that makes the work traceable and shippable to a customer: a `name` following the MMC convention, a `summary` that states the *business need* the module solves (never an echo of the `name` — "Units Management" on a module named Units Management says nothing), a real `description`, the `project.task` id the work traces to, and a customer license (not `LGPL`). (Exact keys and formats: `references/module-structure.md`.)
 
 ### One module, one responsibility — and `depends` is a contract
 

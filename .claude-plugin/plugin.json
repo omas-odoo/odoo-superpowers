@@ -1,7 +1,7 @@
 {
 	"name": "odoo-superpowers",
 	"description": "Odoo SA development skills, hooks, and conventions for PSDU customer work. Principles-first guidance for module development, code review, testing, and continuous skill refinement.",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"author": {
 		"name": "Omar Assouma",
 		"email": "omas@odoo.com"

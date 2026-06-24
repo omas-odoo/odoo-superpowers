@@ -2,6 +2,10 @@
 
 Use when writing or reviewing any `<record>`, `<menuitem>`, `<template>`, or data file. Formatting rules from the Odoo 19 Coding Guidelines.
 
+## No XML prolog
+
+Start every data file with `<odoo>` directly. Never add the `<?xml version="1.0" encoding="utf-8"?>` declaration — XML already defaults to UTF-8 and version 1.0, so the prolog is pure noise repeated on every file.
+
 ## Record notation
 
 For `<record>`-style declarations, follow this attribute order:
@@ -23,6 +27,10 @@ For `<record>`-style declarations, follow this attribute order:
     </field>
 </record>
 ```
+
+## Don't restate the field name
+
+Odoo derives a field's label from its name (`partner_id` → "Partner", stripping `_id` and title-casing). A `string=` that just reproduces that derived label is dead noise — drop it, in both the view (`<field name="partner_id" string="Partner"/>`) and the model definition (`partner_id = fields.Many2one(..., string="Partner")`). Set `string=` only to *override* the label with something the field name can't express ("Landlord", "Ejari #").
 
 ## Custom tags (syntactic sugar)
 
@@ -59,7 +67,6 @@ Use these instead of the equivalent `<record>`:
 Use `<data>` **only** to declare `noupdate="1"` data inside a file that also has updatable records.
 
 If the **whole file** is non-updatable, drop the `<data>` tag and set `noupdate="1"` on `<odoo>` directly:
-
 ```xml
 <!-- whole file is non-updatable -->
 <odoo noupdate="1">
@@ -120,6 +127,8 @@ with nothing. Always give the obvious search field(s), the status/lifecycle filt
 
 - [ ] All `id` attributes match the model/role naming pattern (see `xml-naming.md`)
 - [ ] All `name` fields mirror the id with dots replacing underscores (for ir.ui.view records)
+- [ ] No `<?xml?>` prolog — the file starts at `<odoo>`
+- [ ] No `string=` that just restates the field's derived label
 - [ ] Records grouped by model
 - [ ] No `<data>` tag wrapping the whole file just to use `noupdate=1` — put it on `<odoo>` instead
 - [ ] Actions have human-readable names

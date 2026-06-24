@@ -22,9 +22,11 @@ For each changed file, load this skill **plus** the one its path maps to. The ri
 
 ## Reading a diff
 
-### Read it twice — each file alone, then the change as a system
+### Two passes — don't mix them
 
-Pass one takes each changed file on its own terms: does this model / view / template read like Odoo wrote it? You're judging well-formedness, not correctness. Pass two — only once every file is read — traces one real user action end to end, from the view or route through the access checks into the DB. The two passes find different bugs and must not be mixed: a file can be flawless Odoo and still be wrong in concert with another — user input meeting a `sudo`, a `limit` that disagrees with a column, the same job done two ways. The dangerous bugs almost all live in pass two; budget for it.
+**Pass 1 — file by file, line by line.** Walk each changed file on its own, line by line, never skimming for shape. Nitpick as the senior reviewer would — the dead `or`, the redundant `string=`, the `[0]` on an invariant, the per-row op tucked in a helper — and anchor every finding to its `file:line`. The shapes to hunt are in *What only this read catches*; a thematic "overall this is solid" summary is the failure mode, because it's how you skim past every one of them.
+
+**Pass 2 — the whole change, as a system.** Only once every line is read, trace one real user action end to end — view or route → access checks → DB. This catches what no single file shows: user input meeting a `sudo`, a `limit` that disagrees with a column, the same job done two ways. Most of the dangerous bugs live here — budget for it.
 
 ### The bug is usually the code that isn't there
 
@@ -38,13 +40,13 @@ Lint can only read what the diff contains; a reviewer reads what the diff *shoul
 
 ### Style the linter is blind to
 
-Three shapes recur and none trip a linter. **Repeated `vals` dicts built inline** should be a `_prepare_<x>_vals` method — a customer submodule extends behavior by overriding a method, never by patching a literal buried in a loop, so the missing seam is a real defect, not taste. **Dead code is a blocker, not a nitpick** — an unused file, a one-line wrapper that only calls `super`, an `ensure_one()` that guards nothing: each is a maintenance tax and a lie about intent, and the customer inherits both. **Every error and log message names the record and the problem** — `raise UserError("Error")` or a bare `"Invalid"` is unactionable in a customer's log at 2am; the message has to say which record and what's wrong with it.
+Three shapes recur and none trip a linter. **Repeated `vals` dicts built inline** should be a `_prepare_<x>_vals` method — a customer submodule extends behavior by overriding a method, never by patching a literal buried in a loop, so the missing seam is a real defect, not taste. **Dead code is a blocker, not a nitpick** — an unused file, a one-line wrapper that only calls `super`, an `ensure_one()` that guards nothing, an `a or b` whose `b` can never be reached, an `if x and y` where one half is always true, a comment that just restates the line it sits on, a field assigned identically in every branch *and* again after them: each is a maintenance tax and a lie about intent, and the customer inherits both. **Every error and log message names the record and the problem** — `raise UserError("Error")` or a bare `"Invalid"` is unactionable in a customer's log at 2am; the message has to say which record and what's wrong with it.
 
 ### Shapes that should trigger a deeper read
 
 When one of these appears, that's the signal to pull the owning skill and read harder — don't wave it through:
 
-- `.py`: a loop that writes or queries, `search(...)[0]`, a stored compute reading `context`/time/`env.user`, a `.sudo()` with no preceding `has_group`, a `has_group` check doing work `ir.rule` should own, a self-less method doing external I/O on a model → `odoo-python`.
+- `.py`: a loop that writes or queries — *including one tucked inside a private helper, which doesn't pay the debt* — `search(...)[0]` or `filtered(...)[0]` leaning on an invariant declared elsewhere (prefer `sum(mapped(...))`), a stored compute reading `context`/time/`env.user`, a `.sudo()` with no preceding `has_group`, a `has_group` check doing work `ir.rule` should own, a self-less method doing external I/O on a model → `odoo-python`.
 - `static/src`: a reassignment that should be `patch()`, the DOM reached imperatively, an un-`_t()`'d user-facing string → `odoo-js`.
 - `tests/`: a test run on a polluted DB (false confidence), or named for a method instead of a behavior → `odoo-test-runner`.
 

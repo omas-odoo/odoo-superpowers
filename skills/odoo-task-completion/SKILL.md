@@ -19,7 +19,7 @@ Two passes you owe before the word "done": read your own diff as if a stranger w
 
 ### Every change traces to its task id, and "done" carries its evidence
 
-A `project.task` closed with "fixed" is not closed: the comment is part of the deliverable, and a non-developer at the customer has to be able to act on it. Saying "done" means linking the ticket, the branch, and the proof — test output, shell session, or screenshot. Without that, "done" is a claim, not a fact.
+A `project.task` closed with "fixed" is not closed: the comment is part of the deliverable, and a non-developer at the customer has to be able to act on it — and the commit message and PR body answer to the same bar, terse and human, not an AI essay no one reads — a one-line summary, then `This commit includes the following:` and one bullet per change. Saying "done" means linking the ticket, the branch, and the proof — test output, shell session, or screenshot. Without that, "done" is a claim, not a fact.
 
 ### A gate that keeps failing is data, not a personal failing
 
