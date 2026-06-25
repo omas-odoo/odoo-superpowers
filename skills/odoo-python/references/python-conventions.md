@@ -184,6 +184,34 @@ def action(self):
 
 Trade off against readability — over-extracting hurts too.
 
+## Docstrings
+
+A multi-line docstring opens on its own line — the `"""` sits alone, the summary starts on the next line. Don't put the summary on the same line as the opening quotes.
+
+```python
+# good — opening """ alone, text on the next line
+@property
+def approver_signature(self):
+    """
+    Email signature of the user who cleared the last Studio approval step.
+
+    The COO is configured as the final approval step on the purchase order,
+    so the signature printed on the report is that of whoever approved the
+    rule with the highest ``notification_order``. Returns an empty value
+    while that final step has not been approved yet.
+    """
+
+# bad — summary crammed onto the opening line
+def approver_signature(self):
+    """Email signature of the user who cleared the last Studio approval step.
+
+    The COO is configured as the final approval step on the purchase order,
+    ...
+    """
+```
+
+A single-line docstring stays on one line: `"""Return the approver's signature."""`.
+
 ## Whitespace & grouping
 
 Group a method's phases (guards / fetch / compute / write / return) with single blank lines; a double blank line inside a body is `E303`. The longer the method, the more it needs the breaks — but past two or three phases it's probably two methods (see *Method shape*). `ruff` normalizes the rest.
