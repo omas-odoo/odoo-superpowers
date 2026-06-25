@@ -19,10 +19,10 @@ Two passes you owe before the word "done": read your own diff as if a stranger w
 
 ### Every change traces to its task id, and "done" carries its evidence
 
-A `project.task` closed with "fixed" is not closed: the comment is part of the deliverable, and a non-developer at the customer has to be able to act on it — and the commit message and PR body answer to the same bar, terse and human, not an AI essay no one reads — a one-line summary, then `This commit includes the following:` and one bullet per change. Saying "done" means linking the ticket, the branch, and the proof — test output, shell session, or screenshot. Without that, "done" is a claim, not a fact.
+A `project.task` closed with "fixed" is not closed: the comment is part of the deliverable, and a non-developer at the customer has to be able to act on it. The commit and PR answer to the same bar — split into one-logical-change commits, tagged, terse, and traced to the task id (→ odoo-git-commit owns the shape and message format). Saying "done" means linking the ticket, the branch, and the proof — test output, shell session, or screenshot. Without that, "done" is a claim, not a fact.
 
 ### A gate that keeps failing is data, not a personal failing
 
 Stuck on the same gate for a third pass means it found something a skill should have warned you about earlier. Note the concrete case in `skills/_journal.md`; → refining-odoo-skills folds it into a sharper principle or a script fix.
 
-This skill orchestrates → odoo-code-review then → odoo-test-runner; the customer-readiness stance reaches → odoo-migrations and → odoo-grill.
+This skill orchestrates → odoo-code-review then → odoo-test-runner; the commit/PR stance reaches → odoo-git-commit; the customer-readiness stance reaches → odoo-migrations and → odoo-grill.

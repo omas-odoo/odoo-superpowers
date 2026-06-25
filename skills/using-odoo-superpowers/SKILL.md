@@ -19,6 +19,7 @@ You're shipping a module to a customer, not a script to a notebook. Reach for th
 - **`odoo-js`** — before writing or reviewing anything under `static/src`: OWL components, services, `patch()` overrides, QWeb/OWL templates, SCSS. Carries PSAE principles for OWL correctness, the patch discipline, template conventions, and frontend JS style.
 - **`odoo-code-review`** — after writing Odoo code and before claiming it's done. Also when reviewing a teammate's PSDU PR.
 - **`odoo-test-runner`** — before saying "tests pass." Pollution in a long-lived dev DB makes green tests lie.
+- **`odoo-git-commit`** — before any `git commit` on customer code. Owns the splitting discipline (one logical change per commit, split by module, move-then-modify), the `[TAG] module: summary` convention, and the terse-human message bar.
 - **`odoo-task-completion`** — when wrapping up a `project.task` ticket. Orchestrates review + test + the "would I show this to the customer" check.
 - **`refining-odoo-skills`** — when the user corrects you on something Odoo-specific, or when the journal has accumulated entries. Skills that don't evolve go stale.
 

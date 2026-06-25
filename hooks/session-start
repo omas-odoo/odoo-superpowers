@@ -72,7 +72,7 @@ fi
 combined="${using_content}${memory_block}"
 combined_escaped=$(escape_for_json "$combined")
 
-session_context="<EXTREMELY_IMPORTANT>\nYou have odoo-superpowers — Odoo PSDU skills installed.\n\n**Below is the full content of your 'odoo-superpowers:using-odoo-superpowers' entry skill, followed by any recent un-folded corrections. For all other Odoo skills (odoo-code-review, odoo-module-development, odoo-python, odoo-xml-conventions, odoo-migrations, odoo-test-runner, odoo-task-completion, refining-odoo-skills), invoke them via the Skill tool when relevant:**\n\n${combined_escaped}\n</EXTREMELY_IMPORTANT>"
+session_context="<EXTREMELY_IMPORTANT>\nYou have odoo-superpowers — Odoo PSDU skills installed.\n\n**Below is the full content of your 'odoo-superpowers:using-odoo-superpowers' entry skill, followed by any recent un-folded corrections. For all other Odoo skills (odoo-grill, odoo-module-development, odoo-migrations, odoo-python, odoo-xml-conventions, odoo-js, odoo-code-review, odoo-test-runner, odoo-git-commit, odoo-task-completion, refining-odoo-skills), invoke them via the Skill tool when relevant:**\n\n${combined_escaped}\n</EXTREMELY_IMPORTANT>"
 
 # Platform-aware JSON output.
 # Cursor   → additional_context (snake_case, top-level)
